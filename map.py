@@ -36,6 +36,7 @@ def make_choropleths(data, map_df):
         fig.update_layout(
             title=f"Choropleth Map of ITL2 regions: {column}",
             margin={"r":0,"t":50,"l":0,"b":0},  # Adjust margins
+            height = 650
         )
         maps.append(fig)
     return maps

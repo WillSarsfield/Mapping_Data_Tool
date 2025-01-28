@@ -19,6 +19,8 @@ def main():
 
     uploaded_file = st.file_uploader("Upload a file", type=["csv"])
 
+    figure = st.empty()
+    fig = []
     # Button to confirm the selection
     if st.button("Set Filepath"):
         if uploaded_file:
@@ -31,16 +33,13 @@ def main():
             map_df = map_df.groupby(['itl2', 'itl2name']).geometry.apply(lambda x: x.union_all()).reset_index()
             map_df = gpd.GeoDataFrame(map_df, geometry='geometry', crs=itl3_shapes_df.crs)
             map_df['geometry'] = map_df['geometry'].simplify(0.0001, preserve_topology=True)
-            figure = st.empty()
 
             fig = map.make_choropleths(df.set_index('itl2'), map_df)
 
-
-            figure.plotly_chart(fig[0], use_container_width=True, key=f"plot_1")
         else:
             st.error("No file uploaded yet.")
-    
-    
+    if fig:
+        figure.plotly_chart(fig[0], use_container_width=True, key=f"plot_1")
 
 
 if __name__ == '__main__':
