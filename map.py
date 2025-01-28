@@ -1,6 +1,18 @@
 import plotly.graph_objects as go
 from plotly.colors import sequential
 
+def create_placeholder_fig():
+    fig = go.Figure()
+    fig.update_layout(
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        width=800,  # Match the width of your actual figure
+        height=550,  # Match the height of your actual figure
+        margin=dict(l=0, r=0, t=50, b=0),  # Reduce margins
+        plot_bgcolor="rgba(0,0,0,0)",  # Transparent background
+    )
+    return [fig]
+
 def make_choropleths(data, map_df):
     maps = []
     for column in data.columns:
@@ -36,7 +48,8 @@ def make_choropleths(data, map_df):
         fig.update_layout(
             title=f"Choropleth Map of ITL2 regions: {column}",
             margin={"r":0,"t":50,"l":0,"b":0},  # Adjust margins
-            height = 650
+            height = 550,
+            width = 800
         )
         maps.append(fig)
     return maps
