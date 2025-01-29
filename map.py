@@ -1,5 +1,6 @@
 import plotly.graph_objects as go
 from plotly.colors import sequential
+import pandas as pd
 
 def create_placeholder_fig():
     fig = go.Figure()
@@ -13,21 +14,23 @@ def create_placeholder_fig():
     )
     return [fig]
 
-def make_choropleths(data, map_df):
+def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1]):
     maps = []
     for column in data.columns:
         temp = data[column]
+        temp = (temp.astype(str).str.replace(r"[^\d.-]", "", regex=True))
+        temp = pd.to_numeric(temp, errors="coerce")
 
         # Merge GeoDataFrame with data
-        merged_df = map_df.merge(temp, on='itl2')
+        merged_df = map_df.merge(temp, on=geo_level)
 
         # Add the choropleth map
         fig = go.Figure(go.Choropleth(
             geojson=merged_df.__geo_interface__,
-            featureidkey="properties.itl2",  # Match with GeoJSON properties
-            locations=merged_df['itl2'],  # Geographic identifiers in data
+            featureidkey=f"properties.{geo_level}",  # Match with GeoJSON properties
+            locations=merged_df[geo_level],  # Geographic identifiers in data
             z=merged_df[column],  # Use precomputed indices for color
-            colorscale=sequential.Viridis[::-1],  # Reverse the Viridis colour scale
+            colorscale=colorscale,  # Reverse the Viridis colour scale
             colorbar=dict(
             tickformat=".0%"  # Add percent sign to the colour scale
         ),
@@ -45,8 +48,15 @@ def make_choropleths(data, map_df):
             visible=False  # Hide default geographic features              
             )
 
+        if geo_level[:3] == 'itl':
+            geo_title = geo_level.upper()
+        elif geo_level == 'la':
+            geo_title = 'Local Authority'
+        elif geo_level == 'mca':
+            geo_title = 'Combined Authority'
+
         fig.update_layout(
-            title=f"Choropleth Map of ITL2 regions: {column}",
+            title=f"Choropleth Map of {geo_title} regions: {column}",
             margin={"r":0,"t":50,"l":0,"b":0},  # Adjust margins
             height = 550,
             width = 800
