@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import geopandas as gpd
 import map
+import numpy as np
+import plotly.express as px
 
 def make_map_itl(itl_level):
     itlmapping = pd.read_csv('src/itlmapping.csv')
@@ -25,8 +27,20 @@ def make_map_authorities(authority_level):
     map_df['geometry'] = map_df['geometry'].simplify(0.0001, preserve_topology=True)
     return map_df
 
+# Generate the colour scale
+def generate_colour_scale(colours, n=256):
+    # Interpolate between colours
+    colour_scale = []
+    for i in range(len(colours) - 1):
+        start = np.array(px.colors.hex_to_rgb(colours[i]))
+        end = np.array(px.colors.hex_to_rgb(colours[i + 1]))
+        steps = np.linspace(0, 1, n // (len(colours) - 1))
+        interpolated = (1 - steps)[:, None] * start + steps[:, None] * end
+        colour_scale.extend([f"rgb({int(r)},{int(g)},{int(b)})" for r, g, b in interpolated])
+    return colour_scale[::-1]
+
 @st.cache_data
-def get_figures(uploaded_file):
+def get_figures(uploaded_file, colorscale=None):
     if not uploaded_file:
         return None
     
@@ -39,8 +53,9 @@ def get_figures(uploaded_file):
         geo_level = 'la'
         map_df = make_map_authorities(geo_level)
         df = df.rename(columns={df.columns[0]: geo_level})
-    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level)
-    return fig
+    mapnames = list(df.set_index(geo_level).columns)
+    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, colorscale)
+    return fig, mapnames
     
 def main():
     st.set_page_config(layout="wide")
@@ -48,57 +63,108 @@ def main():
     st.sidebar.html("<a href='https://lab.productivity.ac.uk' alt='The Productivity Lab'></a>")
     st.logo("static/logo.png", link="https://lab.productivity.ac.uk/", icon_image=None)
 
-    figure = st.empty()
+    st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
+
+    # Map select options
+    if "mapname" not in st.session_state:
+        st.session_state.mapname = []
+
+    if 'index' not in st.session_state:
+        st.session_state.index = 0
+
+    # Intro to tool above tool itself
+
+    with st.expander(label="**About this tool**", expanded=False):
+
+        st.markdown(
+            """
+
+            ###### Developed by the [TPI Productivity Lab](https://www.productivity.ac.uk/the-productivity-lab/), this tool allows for the quick creation of custom choropleth maps of regions in the United Kingdom, allowing for visual comparisons of different metrics across different geographic areas.
+
+            ##### This tool can produce multiple maps in 3 simple steps:
+            - **Construct your custom data file**: First construct a CSV file containing your data alongside relevant region codes. Examples are provided on how to do this.
+            - **Upload your data**: Click *Browse Files* below, locate your file, and then press *Generate Maps*.
+            - **Customise your map**: Use the options on the sidebar to alter the colour, labels, and units.
+            """
+            )
+
+    # Beginning of tool body
+
+    # Column displaying figure and nav tools
     col1, col2, col3 = st.columns([1, 6, 1])
 
-    uploaded_file = st.file_uploader("Upload a file", type=["csv"])
+    st.session_state.upload_file = st.file_uploader("Upload a file", type=["csv"])
 
-    # Initialise session state for the current figure index
-    if "index" not in st.session_state:
-        st.session_state.index = 0
-    
     # Ensure session state is initialised for `fig`
     if "fig" not in st.session_state:
-        st.session_state.fig = get_figures(uploaded_file)
+        print(st.session_state.upload_file)
+        st.session_state.fig = get_figures(st.session_state.upload_file)
 
     # Button to confirm the selection
     if st.button("Generate Maps"):
-        if uploaded_file:
-            st.success(f"Filepath set to: {uploaded_file.name}")
-            st.session_state.fig = get_figures(uploaded_file)
+        if st.session_state.upload_file:
+            st.success(f"Filepath set to: {st.session_state.upload_file.name}")
+            st.session_state.fig, st.session_state.mapname = get_figures(st.session_state.upload_file)
         else:
             st.error("No file uploaded yet.")
+
+
+    # Sidebar updates after upload
+    map_selection = st.sidebar.selectbox("Select map", options=st.session_state.mapname, index=st.session_state.index)
+    if map_selection:
+        st.session_state.index = st.session_state.mapname.index(map_selection)
+    st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
+    # Unit change option
+    st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
+    # Colour change options
+    num_colours = st.sidebar.slider("Number of Colours", min_value=2, max_value=6, value=5)
+
+    # Colour pickers
+    colours = []
+    # Create two columns in the sidebar using container
+    with st.sidebar.container():
+        colour_column1, colour_column2 = st.columns([1, 1])  # Create two columns
+        
+        for i in range(num_colours):
+            if i > 2:
+                with colour_column2:  # Use the second column for colours after index 2
+                    if i == 3:
+                        colour = st.color_picker(f"Pick Colour {i+1}", "#47be6d")
+                    elif i == 4:
+                        colour = st.color_picker(f"Pick Colour {i+1}", "#f4e625")
+                    else:
+                        colour = st.color_picker(f"Pick Colour {i+1}", "#FFFFFF")
+                    colours.append(colour)
+            else:
+                with colour_column1:  # Use the first column for the first 3 colours
+                    if i == 0:
+                        colour = st.color_picker(f"Pick Colour {i+1}", "#440255")
+                    elif i == 1:
+                        colour = st.color_picker(f"Pick Colour {i+1}", "#39538b")
+                    elif i == 2:
+                        colour = st.color_picker(f"Pick Colour {i+1}", "#26828e")
+                    colours.append(colour)
+
+    custom_colour_scale = generate_colour_scale(colours)
+    st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
+    # Labeling options
+
+    # Initialise session state for the current figure index
 
     if 'fig' in st.session_state:
         if st.session_state.fig:
             # Define button functionality
             with col1:
-                if st.button("⬅️ Previous"):
-                    st.session_state.index = (st.session_state.index - 1)
+                if st.button("⬅️ Previous", key="prev_button", help="Go to the previous map"):
+                    st.session_state.index = (st.session_state.index - 1) % len(st.session_state.fig)
 
             with col3:
-                if st.button("Next ➡️"):
-                    st.session_state.index = (st.session_state.index + 1)
+                if st.button("Next ➡️", key="next_button", help="Go to the next map"):
+                    st.session_state.index = (st.session_state.index + 1) % len(st.session_state.fig)
 
-            # Dots in the centre with proper horizontal alignment
             with col2:
-                total_figures = len(st.session_state.fig)
-                current_index = st.session_state.index
-
-                # Render clickable dots as styled buttons
-                dot_container = '<div style="display: flex; justify-content: center; gap: 10px;">'
-                for i in range(total_figures):
-                    colour = "blue" if i == current_index % total_figures else "grey"
-                    dot_container += f"""<a href="/?index={i}" style="text-decoration: none;">
-                    <button style="background-color: {colour}; border: none;
-                                border-radius: 50%; width: 20px; height: 20px;
-                                cursor: pointer; margin: 0 5px;">
-                    </button></a>"""
-                dot_container += "</div>"
-
-                st.markdown(dot_container, unsafe_allow_html=True)
-
-            figure.plotly_chart(st.session_state.fig[st.session_state.index % len(st.session_state.fig)], use_container_width=True)
+                st.session_state.fig, st.session_state.mapname = get_figures(st.session_state.upload_file, custom_colour_scale)
+                st.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True)
 
 
 if __name__ == '__main__':
