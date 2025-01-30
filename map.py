@@ -57,7 +57,8 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                 z=mca[column],
                 colorscale=colorscale,
                 colorbar=dict(
-                    tickformat=data_format
+                    tickformat=data_format,
+                    tickprefix = units
                 ),
                 showscale=True,
                 name='MCA Regions',
@@ -72,8 +73,9 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                 z=merged_df[column],  # Use precomputed indices for color
                 colorscale=colorscale,  # Reverse the Viridis colour scale
                 colorbar=dict(
-                tickformat=data_format # Add percent sign to the colour scale
-            ),
+                tickformat=data_format, # Add percent sign to the colour scale
+                tickprefix = units
+                ),
                 showscale=True,  # Show the colour scale
                 hovertemplate=hover_template
             ))
