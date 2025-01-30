@@ -126,14 +126,6 @@ def main():
 
     upload_file = st.file_uploader("Upload a file", type=["csv"])
 
-    # Button to confirm the selection
-    if st.button("Generate Maps"):
-        if upload_file:
-            st.success(f"Filepath set to: {upload_file.name}")
-            df = pd.read_csv(upload_file)
-            fig, mapname = get_figures(df, st.session_state.show_missing_values)
-        else:
-            st.error("No file uploaded yet.")
     if mapname:
         index = mapname.index(st.sidebar.selectbox("Select map", options=mapname))
     else:
@@ -143,11 +135,9 @@ def main():
     unit_options = ['%', '£', '$', '€', 'None']
     unit = st.sidebar.selectbox("Select units", options=unit_options)
     dp = st.sidebar.select_slider("Select decimal places", options=list(range(5)), value=0)
-    show_missing_regions = st.sidebar.toggle(label='Hide the rest of the UK', value=False)
+    show_missing_values = st.sidebar.toggle(label='Hide the rest of the UK', value=False)
     labels = st.sidebar.toggle(label='Show region names', value=False)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
-    # Checkbox for showing rest of map
-    st.sidebar.checkbox('Show missing data', key='show_missing_values', help="If values are missing, display the missing parts as grey on the map")
     # Colour change options
     num_colours = st.sidebar.slider("Number of Colours", min_value=2, max_value=6, value=5)
 
@@ -179,10 +169,20 @@ def main():
 
     custom_colour_scale = generate_colour_scale(colours)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
+    
+    # Button to confirm the selection
+    if st.button("Generate Maps"):
+        if upload_file:
+            st.success(f"Filepath set to: {upload_file.name}")
+            df = pd.read_csv(upload_file)
+            fig, mapname = get_figures(df, custom_colour_scale, show_missing_values, labels, unit, dp)
+        else:
+            st.error("No file uploaded yet.")
+
     # Labeling options
     if fig:
         # Save session state variables and load figure
-        st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_regions, labels, unit, dp)
+        st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, labels, unit, dp)
         st.session_state.df = df
         figure.plotly_chart(st.session_state.fig[index], use_container_width=True)
         st.session_state.index = index

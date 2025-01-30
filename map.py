@@ -25,7 +25,6 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
     else:
         data_format = f".{dp}f"  # Units before the value
         unit = units
-    print(data_format)
     
     for column in data.columns:
         temp = data[column]
@@ -58,7 +57,7 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
             ))
 
             # If show_missing_values is True, add trace to show non-MCA regions in light grey
-            if show_missing_values:
+            if not show_missing_values:
                 fig.add_trace(go.Choropleth(
                             geojson=non_mca.__geo_interface__,
                             featureidkey="id",  # Changed from properties.mca
@@ -86,7 +85,7 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                             column + ': %{z:.1%}<extra></extra>'
             ))
             
-            if show_missing_values:
+            if not show_missing_values:
                 last_col = merged_df.columns[-1]
                 missing_values_df = merged_df[merged_df[last_col].isna()]
                 fig.add_trace(go.Choropleth(
