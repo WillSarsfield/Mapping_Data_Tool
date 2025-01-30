@@ -60,7 +60,7 @@ def generate_colour_scale(colours, n=256):
     return colour_scale[::-1]
 
 @st.cache_data
-def get_figures(df, show_missing_values, colorscale=None):    
+def get_figures(df, colorscale=None, show_missing_values=False, labels = False, units='%', dp=2):    
     if df.iloc[:, 0][0][:2] == 'TL':
         geo_level = f'itl{str(len(df.iloc[:, 0][0]) - 2)}'
         map_df = make_map_itl(geo_level)
@@ -73,7 +73,7 @@ def get_figures(df, show_missing_values, colorscale=None):
         map_df = make_map_authorities(geo_level)
         df = df.rename(columns={df.columns[0]: geo_level})
     mapnames = list(df.set_index(geo_level).columns)
-    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, show_missing_values, colorscale)
+    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, colorscale, show_missing_values, labels, units, dp)
     return fig, mapnames
     
 def main():
@@ -104,9 +104,6 @@ def main():
     else:
         df = pd.DataFrame()
 
-    if 'show_missing_values' not in st.session_state:
-        st.session_state.show_missing_values = True
-
     # Intro to tool above tool itself
 
     with st.expander(label="**About this tool**", expanded=False):
@@ -123,10 +120,9 @@ def main():
             """
             )
 
-    # Beginning of tool body
+    figure = st.empty()
 
-    # Column displaying figure and nav tools
-    col1, col2, col3 = st.columns([1, 6, 1])
+    # Beginning of tool body
 
     upload_file = st.file_uploader("Upload a file", type=["csv"])
 
@@ -138,31 +134,17 @@ def main():
             fig, mapname = get_figures(df, st.session_state.show_missing_values)
         else:
             st.error("No file uploaded yet.")
-
-
-    # Initialise session state for the current figure index
-
-    if fig:
-        # Define button functionality
-        select_map = True
-        with col1:
-            if st.button("⬅️ Previous", key="prev_button", help="Go to the previous map"):
-                index = (index - 1) % len(fig)
-                index = mapname.index(st.sidebar.selectbox("Select map", options=mapname, index=index))
-                select_map = False
-
-        with col3:
-            if st.button("Next ➡️", key="next_button", help="Go to the next map"):
-                index = (index + 1) % len(fig)
-                index = mapname.index(st.sidebar.selectbox("Select map", options=mapname, index=index))
-                select_map = False
-        if select_map:
-            index = mapname.index(st.sidebar.selectbox("Select map", options=mapname))
+    if mapname:
+        index = mapname.index(st.sidebar.selectbox("Select map", options=mapname))
     else:
         st.sidebar.selectbox("Select map", options=mapname)
     # Sidebar updates after upload
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
-    # Unit change option
+    unit_options = ['%', '£', '$', '€', 'None']
+    unit = st.sidebar.selectbox("Select units", options=unit_options)
+    dp = st.sidebar.select_slider("Select decimal places", options=list(range(5)), value=0)
+    show_missing_regions = st.sidebar.toggle(label='Hide the rest of the UK', value=False)
+    labels = st.sidebar.toggle(label='Show region names', value=False)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     # Checkbox for showing rest of map
     st.sidebar.checkbox('Show missing data', key='show_missing_values', help="If values are missing, display the missing parts as grey on the map")
@@ -199,12 +181,11 @@ def main():
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     # Labeling options
     if fig:
-        with col2:
-            # Save session state variables and load figure
-            st.session_state.fig, st.session_state.mapname = get_figures(df, st.session_state.show_missing_values, custom_colour_scale)
-            st.session_state.df = df
-            st.plotly_chart(st.session_state.fig[index], use_container_width=True)
-            st.session_state.index = index
+        # Save session state variables and load figure
+        st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_regions, labels, unit, dp)
+        st.session_state.df = df
+        figure.plotly_chart(st.session_state.fig[index], use_container_width=True)
+        st.session_state.index = index
 
 
 if __name__ == '__main__':
