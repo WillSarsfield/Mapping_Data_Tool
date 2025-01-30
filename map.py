@@ -50,7 +50,7 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                         colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
                         showscale=False,
                         name='Non-MCA Regions',
-                        hovertemplate='%{location}<extra></extra>'
+                        hovertemplate='Non-MCA Regions<extra></extra>'
                     ))
             # Add trace to show MCA regions
             fig.add_trace(go.Choropleth(
