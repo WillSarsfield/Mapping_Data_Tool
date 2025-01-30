@@ -40,11 +40,7 @@ def generate_colour_scale(colours, n=256):
     return colour_scale[::-1]
 
 @st.cache_data
-def get_figures(uploaded_file, colorscale=None):
-    if not uploaded_file:
-        return None
-    
-    df = pd.read_csv(uploaded_file)
+def get_figures(df, colorscale=None):    
     if df.iloc[:, 0][0][:2] == 'TL':
         geo_level = f'itl{str(len(df.iloc[:, 0][0]) - 2)}'
         map_df = make_map_itl(geo_level)
@@ -80,6 +76,11 @@ def main():
     else:
         index = 0
 
+    if 'df' in st.session_state:
+        df = st.session_state.df
+    else:
+        df = pd.DataFrame()
+
     # Intro to tool above tool itself
 
     with st.expander(label="**About this tool**", expanded=False):
@@ -107,7 +108,8 @@ def main():
     if st.button("Generate Maps"):
         if upload_file:
             st.success(f"Filepath set to: {upload_file.name}")
-            fig, mapname = get_figures(upload_file)
+            df = pd.read_csv(upload_file)
+            fig, mapname = get_figures(df)
         else:
             st.error("No file uploaded yet.")
 
@@ -116,19 +118,23 @@ def main():
 
     if fig:
         # Define button functionality
+        select_map = True
         with col1:
             if st.button("⬅️ Previous", key="prev_button", help="Go to the previous map"):
                 index = (index - 1) % len(fig)
+                index = mapname.index(st.sidebar.selectbox("Select map", options=mapname, index=index))
+                select_map = False
 
         with col3:
             if st.button("Next ➡️", key="next_button", help="Go to the next map"):
                 index = (index + 1) % len(fig)
-
+                index = mapname.index(st.sidebar.selectbox("Select map", options=mapname, index=index))
+                select_map = False
+        if select_map:
+            index = mapname.index(st.sidebar.selectbox("Select map", options=mapname))
+    else:
+        st.sidebar.selectbox("Select map", options=mapname)
     # Sidebar updates after upload
-    print(index)
-    map_selection = st.sidebar.selectbox("Select map", options=mapname, index=index)
-    if mapname:
-        index = mapname.index(map_selection)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     # Unit change option
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
@@ -167,7 +173,8 @@ def main():
     if fig:
         with col2:
             # Save session state variables and load figure
-            st.session_state.fig, st.session_state.mapname = get_figures(upload_file, custom_colour_scale)
+            st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale)
+            st.session_state.df = df
             st.plotly_chart(st.session_state.fig[index], use_container_width=True)
             st.session_state.index = index
 
