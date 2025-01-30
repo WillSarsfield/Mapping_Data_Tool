@@ -22,20 +22,52 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
         temp = pd.to_numeric(temp, errors="coerce")
 
         # Merge GeoDataFrame with data
-        merged_df = map_df.merge(temp, on=geo_level)
+        merged_df = map_df.merge(temp, on=geo_level, how='left')
 
-        # Add the choropleth map
-        fig = go.Figure(go.Choropleth(
-            geojson=merged_df.__geo_interface__,
-            featureidkey=f"properties.{geo_level}",  # Match with GeoJSON properties
-            locations=merged_df[geo_level],  # Geographic identifiers in data
-            z=merged_df[column],  # Use precomputed indices for color
-            colorscale=colorscale,  # Reverse the Viridis colour scale
-            colorbar=dict(
-            tickformat=".0%"  # Add percent sign to the colour scale
-        ),
-            showscale=True  # Show the colour scale
-        ))
+        if geo_level == 'mca':
+            non_mca = merged_df[merged_df['region_type'] == 'non_mca'].copy()
+            mca = merged_df[merged_df['region_type'] == 'mca'].copy()
+            
+            # If MCA map, show non-MCA regions in light grey
+            fig = go.Figure(go.Choropleth(
+                        geojson=non_mca.__geo_interface__,
+                        featureidkey="id",  # Changed from properties.mca
+                        locations=non_mca.index,  # Using index instead of mca column
+                        z=non_mca[column].fillna(0),  # Fill NA with 0 for consistent coloring
+                        colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
+                        showscale=False,
+                        name='Non-MCA Regions',
+                        hovertemplate='%{location}<extra></extra>'
+                    ))
+            
+            # Add trace to show MCA regions
+            fig.add_trace(go.Choropleth(
+                geojson=mca.__geo_interface__,
+                featureidkey="id",  # Changed from properties.mca
+                locations=mca.index,  # Using index instead of mca column
+                z=mca[column],
+                colorscale=colorscale,
+                colorbar=dict(
+                    tickformat=".0%"
+                ),
+                showscale=True,
+                name='MCA Regions',
+                hovertemplate='%{location}<br>' +
+                            column + ': %{z:.1%}<extra></extra>'
+            ))
+
+        else:  # If not MCA data
+            fig = go.Figure(go.Choropleth(
+                geojson=merged_df.__geo_interface__,
+                featureidkey=f"properties.{geo_level}",  # Match with GeoJSON properties
+                locations=merged_df[geo_level],  # Geographic identifiers in data
+                z=merged_df[column],  # Use precomputed indices for color
+                colorscale=colorscale,  # Reverse the Viridis colour scale
+                colorbar=dict(
+                tickformat=".0%"  # Add percent sign to the colour scale
+            ),
+                showscale=True  # Show the colour scale
+            ))
 
         # Update layout
         fig.update_geos(
