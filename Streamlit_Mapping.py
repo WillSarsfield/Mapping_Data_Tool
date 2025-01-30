@@ -20,9 +20,26 @@ def make_map_authorities(authority_level):
     mcamapping = pd.read_csv('src/mcamapping.csv')
     la_shapes_df = gpd.read_file('src/Local_Authority_Districts_December_2024_Boundaries_UK_BUC_-2087974657986281540.geojson')
     map_df = la_shapes_df.rename(columns={'LAD24CD': 'la'})
-    if authority_level != 'la':
-        map_df = map_df.merge(mcamapping, how='left', on='la')
-        map_df = map_df.groupby(['mca', 'mcaname']).geometry.apply(lambda x: x.union_all()).reset_index()
+    if authority_level != 'la':  # If MCA data is entered
+        # Merge all data with MCA mapping
+        mapped_df = map_df.merge(mcamapping, how='left', on='la')
+        # Split into MCA and non-MCA dataframes
+        mca_df = mapped_df[mapped_df['mca'].notna()].copy()
+        non_mca_df = mapped_df[mapped_df['mca'].isna()].copy()
+        # Process MCA regions
+        mca_regions = mca_df.groupby(['mca', 'mcaname']).geometry.apply(lambda x: x.union_all()).reset_index()
+        mca_regions = gpd.GeoDataFrame(mca_regions, geometry='geometry', crs=la_shapes_df.crs)
+        mca_regions['region_type'] = 'mca'
+        # Process non-MCA regions
+        non_mca_geometry = non_mca_df.geometry.union_all()
+        non_mca_regions = gpd.GeoDataFrame({
+            'mca': ['non_mca_all'],
+            'mcaname': ['Non-MCA Regions'],
+            'geometry': [non_mca_geometry],
+            'region_type': ['non_mca']
+        }, geometry='geometry', crs=la_shapes_df.crs)
+        # Merge MCA and non-MCA regions
+        map_df = pd.concat([mca_regions, non_mca_regions], ignore_index=True)
     map_df = gpd.GeoDataFrame(map_df, geometry='geometry', crs=la_shapes_df.crs)
     map_df['geometry'] = map_df['geometry'].simplify(0.0001, preserve_topology=True)
     return map_df
@@ -46,7 +63,10 @@ def get_figures(df, colorscale=None):
         map_df = make_map_itl(geo_level)
         df = df.rename(columns={df.columns[0]: geo_level})
     elif len(df.iloc[:, 0][0]) == 9:
-        geo_level = 'la'
+        if df.iloc[:, 0][0][:3] == 'E47' or df.iloc[:, 0][0][:3] == 'E61':  # E47 = MCA, E61 = GLA
+            geo_level = 'mca'
+        else:
+            geo_level = 'la'
         map_df = make_map_authorities(geo_level)
         df = df.rename(columns={df.columns[0]: geo_level})
     mapnames = list(df.set_index(geo_level).columns)
