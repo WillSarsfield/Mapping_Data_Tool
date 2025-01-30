@@ -65,12 +65,20 @@ def main():
 
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
 
-    # Map select options
-    if "mapname" not in st.session_state:
-        st.session_state.mapname = []
+    if 'fig' in st.session_state:
+        fig = st.session_state.fig
+    else:
+        fig = []
 
-    if 'index' not in st.session_state:
-        st.session_state.index = 0
+    if 'mapname' in st.session_state:
+        mapname = st.session_state.mapname
+    else:
+        mapname = []
+
+    if 'index' in st.session_state:
+        index = st.session_state.index
+    else:
+        index = 0
 
     # Intro to tool above tool itself
 
@@ -93,26 +101,34 @@ def main():
     # Column displaying figure and nav tools
     col1, col2, col3 = st.columns([1, 6, 1])
 
-    st.session_state.upload_file = st.file_uploader("Upload a file", type=["csv"])
-
-    # Ensure session state is initialised for `fig`
-    if "fig" not in st.session_state:
-        print(st.session_state.upload_file)
-        st.session_state.fig = get_figures(st.session_state.upload_file)
+    upload_file = st.file_uploader("Upload a file", type=["csv"])
 
     # Button to confirm the selection
     if st.button("Generate Maps"):
-        if st.session_state.upload_file:
-            st.success(f"Filepath set to: {st.session_state.upload_file.name}")
-            st.session_state.fig, st.session_state.mapname = get_figures(st.session_state.upload_file)
+        if upload_file:
+            st.success(f"Filepath set to: {upload_file.name}")
+            fig, mapname = get_figures(upload_file)
         else:
             st.error("No file uploaded yet.")
 
 
+    # Initialise session state for the current figure index
+
+    if fig:
+        # Define button functionality
+        with col1:
+            if st.button("⬅️ Previous", key="prev_button", help="Go to the previous map"):
+                index = (index - 1) % len(fig)
+
+        with col3:
+            if st.button("Next ➡️", key="next_button", help="Go to the next map"):
+                index = (index + 1) % len(fig)
+
     # Sidebar updates after upload
-    map_selection = st.sidebar.selectbox("Select map", options=st.session_state.mapname, index=st.session_state.index)
-    if map_selection:
-        st.session_state.index = st.session_state.mapname.index(map_selection)
+    print(index)
+    map_selection = st.sidebar.selectbox("Select map", options=mapname, index=index)
+    if mapname:
+        index = mapname.index(map_selection)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     # Unit change option
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
@@ -148,23 +164,12 @@ def main():
     custom_colour_scale = generate_colour_scale(colours)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     # Labeling options
-
-    # Initialise session state for the current figure index
-
-    if 'fig' in st.session_state:
-        if st.session_state.fig:
-            # Define button functionality
-            with col1:
-                if st.button("⬅️ Previous", key="prev_button", help="Go to the previous map"):
-                    st.session_state.index = (st.session_state.index - 1) % len(st.session_state.fig)
-
-            with col3:
-                if st.button("Next ➡️", key="next_button", help="Go to the next map"):
-                    st.session_state.index = (st.session_state.index + 1) % len(st.session_state.fig)
-
-            with col2:
-                st.session_state.fig, st.session_state.mapname = get_figures(st.session_state.upload_file, custom_colour_scale)
-                st.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True)
+    if fig:
+        with col2:
+            # Save session state variables and load figure
+            st.session_state.fig, st.session_state.mapname = get_figures(upload_file, custom_colour_scale)
+            st.plotly_chart(st.session_state.fig[index], use_container_width=True)
+            st.session_state.index = index
 
 
 if __name__ == '__main__':
