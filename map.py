@@ -66,7 +66,9 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                 colorbar=dict(
                 tickformat=".0%"  # Add percent sign to the colour scale
             ),
-                showscale=True  # Show the colour scale
+                showscale=True,  # Show the colour scale
+                hovertemplate='%{location}<br>' +
+                            column + ': %{z:.1%}<extra></extra>'
             ))
 
         # Update layout
