@@ -14,7 +14,7 @@ def create_placeholder_fig():
     )
     return [fig]
 
-def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1]):
+def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1], show_missing_regions=False, labels=False, units='%', dp=2):
     maps = []
     for column in data.columns:
         temp = data[column]
@@ -24,6 +24,15 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
         # Merge GeoDataFrame with data
         merged_df = map_df.merge(temp, on=geo_level, how='left')
 
+        if units == '%':
+            data_format = f".{dp}%"  # Significant figures with '%' appended
+            units = ''
+        elif units == 'None':
+            data_format = f".{dp}f"  # Significant figures with no unit
+            units = ''
+        else:
+            data_format = f".{dp}f"  # Units before the value
+        print(data_format)
         if geo_level == 'mca':
             non_mca = merged_df[merged_df['region_type'] == 'non_mca'].copy()
             mca = merged_df[merged_df['region_type'] == 'mca'].copy()
@@ -39,7 +48,6 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                         name='Non-MCA Regions',
                         hovertemplate='%{location}<extra></extra>'
                     ))
-            
             # Add trace to show MCA regions
             fig.add_trace(go.Choropleth(
                 geojson=mca.__geo_interface__,
@@ -48,12 +56,12 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                 z=mca[column],
                 colorscale=colorscale,
                 colorbar=dict(
-                    tickformat=".0%"
+                    tickformat=data_format
                 ),
                 showscale=True,
                 name='MCA Regions',
                 hovertemplate='%{location}<br>' +
-                            column + ': %{z:.1%}<extra></extra>'
+                            column + ': %{unit}%{z:' + data_format + '}<extra></extra>'
             ))
 
         else:  # If not MCA data
@@ -64,11 +72,11 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                 z=merged_df[column],  # Use precomputed indices for color
                 colorscale=colorscale,  # Reverse the Viridis colour scale
                 colorbar=dict(
-                tickformat=".0%"  # Add percent sign to the colour scale
+                tickformat=data_format # Add percent sign to the colour scale
             ),
                 showscale=True,  # Show the colour scale
                 hovertemplate='%{location}<br>' +
-                            column + ': %{z:.1%}<extra></extra>'
+                            column + ': %{z:' + data_format + '}<extra></extra>'
             ))
 
         # Update layout
