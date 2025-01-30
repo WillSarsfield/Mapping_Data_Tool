@@ -14,7 +14,7 @@ def create_placeholder_fig():
     )
     return [fig]
 
-def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1]):
+def make_choropleths(data, map_df, geo_level, show_missing_values, colorscale=sequential.Viridis[::-1]):
     maps = []
     for column in data.columns:
         temp = data[column]
@@ -70,6 +70,23 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                 hovertemplate='%{location}<br>' +
                             column + ': %{z:.1%}<extra></extra>'
             ))
+            
+            if show_missing_values:
+                last_col = merged_df.columns[-1]
+                missing_values_df = merged_df[merged_df[last_col].isna()]
+                fig.add_trace(go.Choropleth(
+                    geojson=missing_values_df.__geo_interface__,
+                    featureidkey=f"properties.{geo_level}",  # Match with GeoJSON properties
+                    locations=missing_values_df[geo_level],  # Geographic identifiers in data
+                    z=missing_values_df[column].fillna(0),  # Fill NA with 0 for consistent coloring
+                    colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
+                    colorbar=dict(
+                    tickformat=".0%"  # Add percent sign to the colour scale
+                ),
+                    showscale=True,  # Show the colour scale
+                    hovertemplate='%{location}<br>' +
+                                column + ': Missing value<extra></extra>'
+                ))
 
         # Update layout
         fig.update_geos(

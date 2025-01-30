@@ -57,7 +57,7 @@ def generate_colour_scale(colours, n=256):
     return colour_scale[::-1]
 
 @st.cache_data
-def get_figures(df, colorscale=None):    
+def get_figures(df, show_missing_values, colorscale=None):    
     if df.iloc[:, 0][0][:2] == 'TL':
         geo_level = f'itl{str(len(df.iloc[:, 0][0]) - 2)}'
         map_df = make_map_itl(geo_level)
@@ -70,7 +70,7 @@ def get_figures(df, colorscale=None):
         map_df = make_map_authorities(geo_level)
         df = df.rename(columns={df.columns[0]: geo_level})
     mapnames = list(df.set_index(geo_level).columns)
-    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, colorscale)
+    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, show_missing_values, colorscale)
     return fig, mapnames
     
 def main():
@@ -100,6 +100,8 @@ def main():
         df = st.session_state.df
     else:
         df = pd.DataFrame()
+    if 'show_missing_values' not in st.session_state:
+        st.session_state.show_missing_values = False
 
     # Intro to tool above tool itself
 
@@ -129,7 +131,7 @@ def main():
         if upload_file:
             st.success(f"Filepath set to: {upload_file.name}")
             df = pd.read_csv(upload_file)
-            fig, mapname = get_figures(df)
+            fig, mapname = get_figures(df, st.session_state.show_missing_values)
         else:
             st.error("No file uploaded yet.")
 
@@ -158,6 +160,8 @@ def main():
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     # Unit change option
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
+    # Checkbox for showing rest of map
+    show_missing_values = st.sidebar.checkbox('Show data', key='show_missing_values', help="If values are missing, display the rest of the UK map")
     # Colour change options
     num_colours = st.sidebar.slider("Number of Colours", min_value=2, max_value=6, value=5)
 
@@ -193,7 +197,7 @@ def main():
     if fig:
         with col2:
             # Save session state variables and load figure
-            st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale)
+            st.session_state.fig, st.session_state.mapname = get_figures(df, st.session_state.show_missing_values, custom_colour_scale)
             st.session_state.df = df
             st.plotly_chart(st.session_state.fig[index], use_container_width=True)
             st.session_state.index = index
