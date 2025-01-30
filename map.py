@@ -28,20 +28,8 @@ def make_choropleths(data, map_df, geo_level, show_missing_values, colorscale=se
             non_mca = merged_df[merged_df['region_type'] == 'non_mca'].copy()
             mca = merged_df[merged_df['region_type'] == 'mca'].copy()
             
-            # If MCA map, show non-MCA regions in light grey
+            # Show MCA regions
             fig = go.Figure(go.Choropleth(
-                        geojson=non_mca.__geo_interface__,
-                        featureidkey="id",  # Changed from properties.mca
-                        locations=non_mca.index,  # Using index instead of mca column
-                        z=non_mca[column].fillna(0),  # Fill NA with 0 for consistent coloring
-                        colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
-                        showscale=False,
-                        name='Non-MCA Regions',
-                        hovertemplate='%{location}<extra></extra>'
-                    ))
-            
-            # Add trace to show MCA regions
-            fig.add_trace(go.Choropleth(
                 geojson=mca.__geo_interface__,
                 featureidkey="id",  # Changed from properties.mca
                 locations=mca.index,  # Using index instead of mca column
@@ -55,6 +43,19 @@ def make_choropleths(data, map_df, geo_level, show_missing_values, colorscale=se
                 hovertemplate='%{location}<br>' +
                             column + ': %{z:.1%}<extra></extra>'
             ))
+
+            # If show_missing_values is True, add trace to show non-MCA regions in light grey
+            if show_missing_values:
+                fig.add_trace(go.Choropleth(
+                            geojson=non_mca.__geo_interface__,
+                            featureidkey="id",  # Changed from properties.mca
+                            locations=non_mca.index,  # Using index instead of mca column
+                            z=non_mca[column].fillna(0),  # Fill NA with 0 for consistent coloring
+                            colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
+                            showscale=False,
+                            name='Non-MCA Regions',
+                            hovertemplate='%{location}<extra></extra>'
+                        ))
 
         else:  # If not MCA data
             fig = go.Figure(go.Choropleth(
@@ -80,10 +81,7 @@ def make_choropleths(data, map_df, geo_level, show_missing_values, colorscale=se
                     locations=missing_values_df[geo_level],  # Geographic identifiers in data
                     z=missing_values_df[column].fillna(0),  # Fill NA with 0 for consistent coloring
                     colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
-                    colorbar=dict(
-                    tickformat=".0%"  # Add percent sign to the colour scale
-                ),
-                    showscale=True,  # Show the colour scale
+                    showscale=False,  # Show the colour scale
                     hovertemplate='%{location}<br>' +
                                 column + ': Missing value<extra></extra>'
                 ))
