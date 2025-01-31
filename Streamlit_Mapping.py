@@ -129,6 +129,16 @@ def main():
 
     upload_file = st.file_uploader("Upload a file", type=["csv"])
 
+    # Button to confirm the selection
+    if st.button("Generate Maps"):
+        if upload_file:
+            st.success(f"Filepath set to: {upload_file.name}")
+            df = pd.read_csv(upload_file)
+            # Generate maps for options in menu
+            fig, mapname = get_figures(df)
+        else:
+            st.error("No file uploaded yet.")
+
     if mapname:
         index = mapname.index(st.sidebar.selectbox("Select map", options=mapname))
     else:
@@ -172,14 +182,6 @@ def main():
     custom_colour_scale = generate_colour_scale(colours)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     
-    # Button to confirm the selection
-    if st.button("Generate Maps"):
-        if upload_file:
-            st.success(f"Filepath set to: {upload_file.name}")
-            df = pd.read_csv(upload_file)
-            fig, mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp)
-        else:
-            st.error("No file uploaded yet.")
 
     # Labeling options
     if fig:
