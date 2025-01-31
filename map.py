@@ -17,7 +17,7 @@ def create_placeholder_fig():
     )
     return [fig]
 
-def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1], show_missing_values=False, labels=False, units='%', dp=2):
+def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1], show_missing_values=False, units='%', dp=2):
     maps = []
     if units == '%':
         data_format = f".{dp}%"  # Significant figures with '%' appended

@@ -63,7 +63,7 @@ def generate_colour_scale(colours, n=256):
     return colour_scale[::-1]
 
 @st.cache_data
-def get_figures(df, colorscale=None, show_missing_values=False, labels = False, units='%', dp=2):    
+def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2):    
     if df.iloc[:, 0][0][:2] == 'TL':
         geo_level = f'itl{str(len(df.iloc[:, 0][0]) - 2)}'
         map_df = make_map_itl(geo_level)
@@ -76,7 +76,7 @@ def get_figures(df, colorscale=None, show_missing_values=False, labels = False, 
         map_df = make_map_authorities(geo_level)
         df = df.rename(columns={df.columns[0]: geo_level})
     mapnames = list(df.set_index(geo_level).columns)
-    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, colorscale, show_missing_values, labels, units, dp)
+    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, colorscale, show_missing_values, units, dp)
     return fig, mapnames
     
 def main():
@@ -119,7 +119,7 @@ def main():
             ##### This tool can produce multiple maps in 3 simple steps:
             - **Construct your custom data file**: First construct a CSV file containing your data alongside relevant region codes. Examples are provided on how to do this.
             - **Upload your data**: Click *Browse Files* below, locate your file, and then press *Generate Maps*.
-            - **Customise your map**: Use the options on the sidebar to alter the colour, labels, and units.
+            - **Customise your map**: Use the options on the sidebar to alter the colour, view, and units.
             """
             )
 
@@ -139,7 +139,6 @@ def main():
     unit = st.sidebar.selectbox("Select units", options=unit_options)
     dp = st.sidebar.select_slider("Select decimal places", options=list(range(5)), value=0)
     show_missing_values = st.sidebar.toggle(label='Hide the rest of the UK', value=False)
-    labels = st.sidebar.toggle(label='Show region names', value=False)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     # Colour change options
     num_colours = st.sidebar.slider("Number of Colours", min_value=2, max_value=6, value=5)
@@ -178,14 +177,14 @@ def main():
         if upload_file:
             st.success(f"Filepath set to: {upload_file.name}")
             df = pd.read_csv(upload_file)
-            fig, mapname = get_figures(df, custom_colour_scale, show_missing_values, labels, unit, dp)
+            fig, mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp)
         else:
             st.error("No file uploaded yet.")
 
     # Labeling options
     if fig:
         # Save session state variables and load figure
-        st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, labels, unit, dp)
+        st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp)
         st.session_state.df = df
         figure.plotly_chart(st.session_state.fig[index], use_container_width=True)
         st.session_state.index = index
