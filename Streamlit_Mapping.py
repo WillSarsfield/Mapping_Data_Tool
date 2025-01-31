@@ -132,10 +132,22 @@ def main():
     # Button to confirm the selection
     if st.button("Generate Maps"):
         if upload_file:
-            st.success(f"Filepath set to: {upload_file.name}")
-            df = pd.read_csv(upload_file)
-            # Generate maps for options in menu
-            fig, mapname = get_figures(df)
+            try:
+                # Bad lines, skips incorrectly formated lines
+                # Low memory loads the csv in at once, preventing malformed CSVs
+                df = pd.read_csv(upload_file, encoding="utf-8", on_bad_lines='skip', low_memory=False)
+                if df.empty:
+                    st.error("Uploaded CSV is empty.")
+                else:
+                    st.success(f"Filepath set to: {upload_file.name}")
+                    # Generate maps for options in menu
+                    fig, mapname = get_figures(df)
+            except UnicodeDecodeError:
+                st.error("Encoding error: Ensure the file is UTF-8 encoded.")
+            except pd.errors.ParserError:
+                st.error("Parsing error: Check if the CSV format is valid.")
+            except Exception as e:
+                st.error(f"An unexpected error occurred: {e}")
         else:
             st.error("No file uploaded yet.")
 
