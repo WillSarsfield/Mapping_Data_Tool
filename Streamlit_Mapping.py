@@ -9,14 +9,12 @@ def make_map_itl(itl_level):
     itlmapping = pd.read_csv('src/itlmapping.csv')
     itl3_shapes_df = gpd.read_file('src/International_Territorial_Level_3_(January_2021)_UK_BUC_V3.geojson')
     map_df = itl3_shapes_df.rename(columns={'ITL321CD': 'itl3'})
-    print("before", map_df.columns)
     if itl_level != 'itl3':
         map_df = map_df.merge(itlmapping, how='left', on='itl3')
-        print("middle", map_df.columns)
         map_df = map_df.groupby([itl_level, f'{itl_level}name']).geometry.apply(lambda x: x.union_all()).reset_index()
-        print("after", map_df.columns)
     map_df = gpd.GeoDataFrame(map_df, geometry='geometry', crs=itl3_shapes_df.crs)
     map_df['geometry'] = map_df['geometry'].simplify(0.0001, preserve_topology=True)
+    map_df = map_df.rename(columns={'itl2name': 'region'})
     return map_df
 
 def make_map_authorities(authority_level):
@@ -43,6 +41,11 @@ def make_map_authorities(authority_level):
         }, geometry='geometry', crs=la_shapes_df.crs)
         # Merge MCA and non-MCA regions
         map_df = pd.concat([mca_regions, non_mca_regions], ignore_index=True)
+        map_df = map_df.rename(columns={'mcaname': 'region'})
+    else:
+        # Merge the mca mapping to the map df so the region names can be displayed on the map
+        map_df = map_df.merge(mcamapping[['la', 'laname']], how='left', on='la')
+        map_df = map_df.rename(columns={'laname': 'region'})
     map_df = gpd.GeoDataFrame(map_df, geometry='geometry', crs=la_shapes_df.crs)
     map_df['geometry'] = map_df['geometry'].simplify(0.0001, preserve_topology=True)
     return map_df

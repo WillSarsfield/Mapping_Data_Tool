@@ -3,6 +3,8 @@ from plotly.colors import sequential
 import pandas as pd
 import geopandas as gpd
 
+pd.set_option('future.no_silent_downcasting', True)  # Prevents deprecation warning from Pandas when using fillna
+
 def create_placeholder_fig():
     fig = go.Figure()
     fig.update_layout(
@@ -32,7 +34,7 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
         temp = (temp.astype(str).str.replace(r"[^\d.-]", "", regex=True))
         temp = pd.to_numeric(temp, errors="coerce")
 
-        hovertemplate = '%{location}<br>' + column + f': {unit}'+'%{z:' + data_format + '}<extra></extra>'
+        hovertemplate = '%{text}<br>' + column + f': {unit}'+'%{z:' + data_format + '}<extra></extra>'
 
         # Merge GeoDataFrame with data
         merged_df = map_df.merge(temp, on=geo_level, how='left')
@@ -47,10 +49,11 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                 featureidkey="id",  # Changed from properties.mca
                 locations=mca.index,  # Using index instead of mca column
                 z=mca[column],
+                text=mca['region'], # Used to show the region name in the hovertemplate
                 colorscale=colorscale,
                 colorbar=dict(
                     tickformat=data_format, # Add percent sign to the colour scale
-                    tickprefix = unit
+                    tickprefix = unit  # Adds the unit (£/$/€) to the colour scale
                 ),
                 showscale=True,
                 name='MCA Regions',
@@ -91,14 +94,14 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                 featureidkey=f"properties.{geo_level}",  # Match with GeoJSON properties
                 locations=merged_df[geo_level],  # Geographic identifiers in data
                 z=merged_df[column],  # Use precomputed indices for color
+                text=merged_df['region'], # Used to show the region name in the hovertemplate
                 colorscale=colorscale,  # Reverse the Viridis colour scale
                 colorbar=dict(
                     tickformat=data_format, # Add percent sign to the colour scale
                     tickprefix = unit
                 ),
                 showscale=True,  # Show the colour scale
-                hovertemplate='%{location}<br>' +
-                            column + ': %{z:.1%}<extra></extra>'
+                hovertemplate=hovertemplate
             ))
             
             if not show_missing_values:
@@ -111,7 +114,7 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                     z=missing_values_df[column].fillna(0),  # Fill NA with 0 for consistent coloring
                     colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
                     showscale=False,  # Show the colour scale
-                    hovertemplate=hovertemplate
+                    hoverinfo='skip'
                 ))
 
         # Update layout
