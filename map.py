@@ -1,6 +1,7 @@
 import plotly.graph_objects as go
 from plotly.colors import sequential
 import pandas as pd
+import geopandas as gpd
 
 def create_placeholder_fig():
     fig = go.Figure()
@@ -58,6 +59,21 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
 
             # If show_missing_values is True, add trace to show non-MCA regions in light grey
             if not show_missing_values:
+                last_col = mca.columns[-1]
+                # Store missing data from MCA dataframe
+                missing_values_df = mca[mca[last_col].isna()]
+                # Merge missing data with non-mca data
+                non_mca = pd.concat([non_mca, missing_values_df]).reset_index(drop=True)
+                # Merge geometries of missing MCA regions and non-MCA regions
+                gdf = gpd.GeoDataFrame(non_mca, geometry="geometry", crs="EPSG:4326")
+                merged_geometry = gdf.geometry.unary_union
+                non_mca = gpd.GeoDataFrame({
+                    "mca": ["all_regions"], 
+                    "mcaname": ["All Regions"], 
+                    "geometry": [merged_geometry],
+                    last_col: [None]  # Add back column of NaN values for the choropleth
+                }, geometry="geometry", crs=gdf.crs)
+
                 fig.add_trace(go.Choropleth(
                             geojson=non_mca.__geo_interface__,
                             featureidkey="id",  # Changed from properties.mca
@@ -66,7 +82,7 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                             colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
                             showscale=False,
                             name='Non-MCA Regions',
-                            hovertemplate='%{location}<extra></extra>'
+                            hoverinfo='skip'
                         ))
 
         else:  # If not MCA data
