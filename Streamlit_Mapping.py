@@ -4,17 +4,18 @@ import geopandas as gpd
 import map
 import numpy as np
 import plotly.express as px
+import base64
 
 def make_map_itl(itl_level):
     itlmapping = pd.read_csv('src/itlmapping.csv')
     itl3_shapes_df = gpd.read_file('src/International_Territorial_Level_3_(January_2021)_UK_BUC_V3.geojson')
     map_df = itl3_shapes_df.rename(columns={'ITL321CD': 'itl3'})
+    map_df = map_df.merge(itlmapping, how='left', on='itl3')
     if itl_level != 'itl3':
-        map_df = map_df.merge(itlmapping, how='left', on='itl3')
         map_df = map_df.groupby([itl_level, f'{itl_level}name']).geometry.apply(lambda x: x.union_all()).reset_index()
     map_df = gpd.GeoDataFrame(map_df, geometry='geometry', crs=itl3_shapes_df.crs)
     map_df['geometry'] = map_df['geometry'].simplify(0.0001, preserve_topology=True)
-    map_df = map_df.rename(columns={'itl2name': 'region'})
+    map_df = map_df.rename(columns={f'{itl_level}name': 'region'})
     return map_df
 
 def make_map_authorities(authority_level):
@@ -62,8 +63,19 @@ def generate_colour_scale(colours, n=256):
         colour_scale.extend([f"rgb({int(r)},{int(g)},{int(b)})" for r, g, b in interpolated])
     return colour_scale[::-1]
 
+
+def get_image_as_base64(file_path):
+    with open(file_path, "rb") as file:
+        data = base64.b64encode(file.read()).decode("utf-8")
+    return data
+
 @st.cache_data
-def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2):    
+def load_css(filepath):
+    with open(filepath) as f:
+        st.html(f"<style>{f.read()}</style>")
+
+@st.cache_data
+def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2):
     if df.iloc[:, 0][0][:2] == 'TL':
         geo_level = f'itl{str(len(df.iloc[:, 0][0]) - 2)}'
         map_df = make_map_itl(geo_level)
@@ -107,6 +119,8 @@ def main():
     else:
         df = pd.DataFrame()
 
+    # Load CSS from assets
+    load_css('assets/styles.css')
     # Intro to tool above tool itself
 
     with st.expander(label="**About this tool**", expanded=False):
@@ -118,7 +132,7 @@ def main():
 
             ##### This tool can produce multiple maps in 3 simple steps:
             - **Construct your custom data file**: First construct a CSV file containing your data alongside relevant region codes. Examples are provided on how to do this.
-            - **Upload your data**: Click *Browse Files* below, locate your file, and then press *Generate Maps*.
+            - **Upload your data**: Click *Browse Files* below, locate your file, and then press *Upload File*.
             - **Customise your map**: Use the options on the sidebar to alter the colour, view, and units.
             """
             )
@@ -126,11 +140,42 @@ def main():
     figure = st.empty()
 
     # Beginning of tool body
+    with st.expander(label="Pre-existing datasets from **The Productivity Institute Data Lab**", expanded=True):
+        # Create buttons with associated images
+        col1, col2, col3, col4 = st.columns(4)
+        print(get_image_as_base64('static/TPI_Logo_MCADigitilisationInnovation.png'))
+        # Image button for Dataset 1
+        with col1:
+            if st.button(label='', key='Example_button1'):
+                df = pd.read_csv("examples/LA_example.csv")
+                fig, mapname = get_figures(df)
+
+            if st.button(label='', key='Example_button5'):
+                df = pd.read_csv("examples/MCA_digitalisation_innovation.csv")
+                fig, mapname = get_figures(df)
+
+        # Image button for Dataset 2
+        with col2:
+            if st.button(label='', key='Example_button2'):
+                df = pd.read_csv("examples/ITL1_Scorecard_input_data_percentage.csv")
+                fig, mapname = get_figures(df)
+
+        with col3:
+            if st.button(label='', key='Example_button3'):
+                df = pd.read_csv("examples/MCA-ITL3_scorecards_data_file_modified.csv")
+                fig, mapname = get_figures(df)
+
+        # Image button for Dataset 2
+        with col4:
+            if st.button(label='', key='Example_button4'):
+                df = pd.read_csv("examples/ITL3_scorecards_data_file_modified.csv")
+                fig, mapname = get_figures(df)
+        
 
     upload_file = st.file_uploader("Upload a file", type=["csv"])
 
     # Button to confirm the selection
-    if st.button("Generate Maps"):
+    if st.button("Upload File"):
         if upload_file:
             st.success(f"Filepath set to: {upload_file.name}")
             df = pd.read_csv(upload_file)
@@ -145,7 +190,7 @@ def main():
         st.sidebar.selectbox("Select map", options=mapname)
     # Sidebar updates after upload
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
-    unit_options = ['%', '£', '$', '€', 'None']
+    unit_options = ['None', '%', '£', '$', '€']
     unit = st.sidebar.selectbox("Select units", options=unit_options)
     dp = st.sidebar.select_slider("Select decimal places", options=list(range(5)), value=0)
     show_missing_values = st.sidebar.toggle(label='Hide the rest of the UK', value=False)
@@ -188,7 +233,7 @@ def main():
         # Save session state variables and load figure
         st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp)
         st.session_state.df = df
-        figure.plotly_chart(st.session_state.fig[index], use_container_width=True)
+        figure.plotly_chart(st.session_state.fig[index], use_container_width=True, key='plot')
         st.session_state.index = index
 
 

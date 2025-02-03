@@ -127,16 +127,9 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
             fitbounds="locations",  
             visible=False  # Hide default geographic features              
             )
-
-        if geo_level[:3] == 'itl':
-            geo_title = geo_level.upper()
-        elif geo_level == 'la':
-            geo_title = 'Local Authority'
-        elif geo_level == 'mca':
-            geo_title = 'Combined Authority'
-
+        
         fig.update_layout(
-            title=f"Choropleth Map of {geo_title} regions: {column}",
+            title=f"{column}",
             margin={"r":0,"t":50,"l":0,"b":0},  # Adjust margins
             height = 550,
             width = 800
