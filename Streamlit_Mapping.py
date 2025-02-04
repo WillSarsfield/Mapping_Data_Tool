@@ -231,35 +231,85 @@ def main():
     show_missing_values = st.sidebar.toggle(label='Hide the rest of the UK', value=False)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     # Colour change options
-    #discrete_colours = st.sidebar.toggle(label='Use discrete colouring')
+    discrete_colours = st.sidebar.toggle(label='Use discrete colouring')
     num_colours = st.sidebar.slider("Number of Colours", min_value=2, max_value=6, value=5)
-    # if not df.empty:
-    #     threshold 
+    if not df.empty:
+        min_val = df[mapname[st.session_state.index]].min()
+        max_val = df[mapname[st.session_state.index]].max()
+        # Create evenly spaced thresholds
+        thresholds = np.linspace(min_val, max_val, num_colours+2)
+        thresholds = thresholds[1:-1]
+    else:
+        thresholds = np.linspace(0, 100, num_colours+2)
+        thresholds = thresholds[1:-1]
     # Colour pickers
     colours = []
     # Create two columns in the sidebar using container
     with st.sidebar.container():
         colour_column1, colour_column2 = st.columns([1, 1])  # Create two columns
-        
-        for i in range(num_colours):
-            if i > 2:
-                with colour_column2:  # Use the second column for colours after index 2
-                    if i == 3:
-                        colour = st.color_picker(f"Pick Colour {i+1}", "#47be6d")
-                    elif i == 4:
-                        colour = st.color_picker(f"Pick Colour {i+1}", "#f4e625")
-                    else:
-                        colour = st.color_picker(f"Pick Colour {i+1}", "#FFFFFF")
-                    colours.append(colour)
-            else:
-                with colour_column1:  # Use the first column for the first 3 colours
-                    if i == 0:
-                        colour = st.color_picker(f"Pick Colour {i+1}", "#440255")
-                    elif i == 1:
-                        colour = st.color_picker(f"Pick Colour {i+1}", "#39538b")
-                    elif i == 2:
-                        colour = st.color_picker(f"Pick Colour {i+1}", "#26828e")
-                    colours.append(colour)
+        if discrete_colours:
+            format_str = f"%.{dp}f"
+            for i in range(num_colours):
+                if i > 2:
+                    with colour_column2:  # Use the second column for colours after index 2
+                        if i == 3:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#47be6d")
+                            if num_colours == i + 1:
+                                thresholds[i] = st.number_input(f'< Colour {i+1}', value=float(thresholds[i]), format=format_str)
+                            else:
+                                thresholds[i] = st.number_input(f'< Colour {i+1} <', value=float(thresholds[i]), format=format_str)
+                        elif i == 4:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#f4e625")
+                            if num_colours == i + 1:
+                                thresholds[i] = st.number_input(f'< Colour {i+1}', value=float(thresholds[i]), format=format_str)
+                            else:
+                                thresholds[i] = st.number_input(f'< Colour {i+1} <', value=float(thresholds[i]), format=format_str)
+                        else:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#ffffff")
+                            if num_colours == i + 1:
+                                thresholds[i] = st.number_input(f'< Colour {i+1}', value=float(thresholds[i]), format=format_str)
+                            else:
+                                thresholds[i] = st.number_input(f'< Colour {i+1} <', value=float(thresholds[i]), format=format_str)
+                        colours.append(colour)
+                else:
+                    with colour_column1:  # Use the first column for the first 3 colours
+                        if i == 0:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#440255")
+                            thresholds[i] = st.number_input(f'Colour {i+1} <', value=float(thresholds[i]), format=format_str)
+                        elif i == 1:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#39538b")
+                            if num_colours == i + 1:
+                                thresholds[i] = st.number_input(f'< Colour {i+1}', value=float(thresholds[i]), format=format_str)
+                            else:
+                                thresholds[i] = st.number_input(f'< Colour {i+1} <', value=float(thresholds[i]), format=format_str)
+                        elif i == 2:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#26828e")
+                            if num_colours == i + 1:
+                                thresholds[i] = st.number_input(f'< Colour {i+1}', value=float(thresholds[i]), format=format_str)
+                            else:
+                                thresholds[i] = st.number_input(f'< Colour {i+1} <', value=float(thresholds[i]), format=format_str)
+                        colours.append(colour)
+            print(thresholds)
+        else:
+            for i in range(num_colours):
+                if i > 2:
+                    with colour_column2:  # Use the second column for colours after index 2
+                        if i == 3:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#47be6d")
+                        elif i == 4:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#f4e625")
+                        else:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#ffffff")
+                        colours.append(colour)
+                else:
+                    with colour_column1:  # Use the first column for the first 3 colours
+                        if i == 0:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#440255")
+                        elif i == 1:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#39538b")
+                        elif i == 2:
+                            colour = st.color_picker(f"Pick Colour {i+1}", "#26828e")
+                        colours.append(colour)
 
     custom_colour_scale = generate_colour_scale(colours)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)

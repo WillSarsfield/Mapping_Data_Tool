@@ -5,6 +5,13 @@ import geopandas as gpd
 
 pd.set_option('future.no_silent_downcasting', True)  # Prevents deprecation warning from Pandas when using fillna
 
+# Assigning each value to a bin
+def assign_bin(value, thresholds):
+    for i in range(len(thresholds) - 1):
+        if thresholds[i] <= value < thresholds[i + 1]:
+            return i
+    return len(thresholds) - 2  # For values equal to the max threshold
+
 def create_placeholder_fig():
     fig = go.Figure()
     fig.update_layout(
@@ -17,7 +24,7 @@ def create_placeholder_fig():
     )
     return [fig]
 
-def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1], show_missing_values=False, units='%', dp=2):
+def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1], show_missing_values=False, units='%', dp=2, discrete_colouring=False, thresholds=[]):
     maps = []
     if units == '%':
         data_format = f".{dp}%"  # Significant figures with '%' appended
