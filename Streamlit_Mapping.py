@@ -5,6 +5,7 @@ import map
 import numpy as np
 import plotly.express as px
 import base64
+import re
 
 def make_map_itl(itl_level):
     itlmapping = pd.read_csv('src/itlmapping.csv')
@@ -199,14 +200,27 @@ def main():
 
     if mapname:
         st.session_state.index = mapname.index(st.sidebar.selectbox("Select map", options=mapname, index=index))
-        new_title = st.sidebar.text_input('Set title',value=mapname[st.session_state.index])
+        new_title = st.sidebar.text_input('Change title',value=mapname[st.session_state.index])
+        valid_input = True
         if not df.empty:
-             df = df.rename(columns={df.columns[st.session_state.index + 1]: new_title})
-             if mapname != list(df.columns[1:]):
-                 st.session_state.df = df
-                 st.session_state.mapname = list(df.columns[1:])
-                 st.session_state.rerun = True
-                 st.rerun()
+            if not new_title:
+                st.sidebar.error("Cannot accept empty title.")
+                valid_input = False
+            if not re.match(r"^[A-Za-z0-9 _\-\[\]\{\}\(\),.]*$", new_title) and valid_input:
+                st.sidebar.error("Invalid characters, please do not include special characters.")
+                valid_input = False
+            if len(new_title) > 70 and valid_input:
+                print(len(new_title))
+                st.sidebar.error("Exceeded character limit, please use no more than 50 characters.")
+                valid_input = False
+            if valid_input:
+                df = df.rename(columns={df.columns[st.session_state.index + 1]: new_title})
+                
+            if mapname != list(df.columns[1:]):
+                st.session_state.df = df
+                st.session_state.mapname = list(df.columns[1:])
+                st.session_state.rerun = True
+                st.rerun()
     else:
         st.sidebar.selectbox("Select map", options=mapname)
     # Sidebar updates after upload
@@ -217,8 +231,10 @@ def main():
     show_missing_values = st.sidebar.toggle(label='Hide the rest of the UK', value=False)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     # Colour change options
+    #discrete_colours = st.sidebar.toggle(label='Use discrete colouring')
     num_colours = st.sidebar.slider("Number of Colours", min_value=2, max_value=6, value=5)
-
+    # if not df.empty:
+    #     threshold 
     # Colour pickers
     colours = []
     # Create two columns in the sidebar using container
