@@ -119,6 +119,10 @@ def main():
     else:
         df = pd.DataFrame()
 
+    if 'rerun' not in st.session_state:
+        st.session_state.rerun = False
+
+
     # Load CSS from assets
     load_css('assets/styles.css')
     # Intro to tool above tool itself
@@ -138,12 +142,20 @@ def main():
             )
 
     figure = st.empty()
+    if fig:
+        figure.markdown(
+        """
+        <div style="border: 0px #ccc; height: 550px; width: 1000px; display: flex; align-items: center; justify-content: center; background-color: #ffffff;">
+            <p style="color: #aaa;"></p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     # Beginning of tool body
     with st.expander(label="Pre-existing datasets from **The Productivity Institute Data Lab**", expanded=True):
         # Create buttons with associated images
         col1, col2, col3, col4 = st.columns(4)
-        print(get_image_as_base64('static/TPI_Logo_MCADigitilisationInnovation.png'))
         # Image button for Dataset 1
         with col1:
             if st.button(label='', key='Example_button1'):
@@ -185,7 +197,15 @@ def main():
             st.error("No file uploaded yet.")
 
     if mapname:
-        index = mapname.index(st.sidebar.selectbox("Select map", options=mapname))
+        st.session_state.index = mapname.index(st.sidebar.selectbox("Select map", options=mapname, index=index))
+        new_title = st.sidebar.text_input('Set title',value=mapname[st.session_state.index])
+        if not df.empty:
+             df = df.rename(columns={df.columns[st.session_state.index + 1]: new_title})
+             if mapname != list(df.columns[1:]):
+                 st.session_state.df = df
+                 st.session_state.mapname = list(df.columns[1:])
+                 st.session_state.rerun = True
+                 st.rerun()
     else:
         st.sidebar.selectbox("Select map", options=mapname)
     # Sidebar updates after upload
@@ -233,7 +253,7 @@ def main():
         # Save session state variables and load figure
         st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp)
         st.session_state.df = df
-        figure.plotly_chart(st.session_state.fig[index], use_container_width=True, key='plot')
+        figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True, key='plot')
         st.session_state.index = index
 
 
