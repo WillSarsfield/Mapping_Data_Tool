@@ -191,6 +191,7 @@ def main():
         if upload_file:
             st.success(f"Filepath set to: {upload_file.name}")
             df = pd.read_csv(upload_file)
+            st.session_state.index = 0
             # Generate maps for options in menu
             fig, mapname = get_figures(df)
         else:
@@ -253,7 +254,7 @@ def main():
         # Save session state variables and load figure
         st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp)
         st.session_state.df = df
-        figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True, key='plot')
+        figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True)
         st.session_state.index = index
 
 
