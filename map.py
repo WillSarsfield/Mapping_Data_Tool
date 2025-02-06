@@ -2,6 +2,7 @@ import plotly.graph_objects as go
 from plotly.colors import sequential
 import pandas as pd
 import geopandas as gpd
+import copy
 
 pd.set_option('future.no_silent_downcasting', True)  # Prevents deprecation warning from Pandas when using fillna
 
@@ -24,7 +25,7 @@ def create_placeholder_fig():
     )
     return [fig]
 
-def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1], show_missing_values=False, units='%', dp=2, discrete_colouring=False, thresholds=[]):
+def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1], show_missing_values=False, units='%', dp=2, thresholds=[]):
     maps = []
     if units == '%':
         data_format = f".{dp}%"  # Significant figures with '%' appended
@@ -35,16 +36,32 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
     else:
         data_format = f".{dp}f"  # Units before the value
         unit = units
+
+    if len(thresholds) > 0:
+        colorscale = [[i / (len(colorscale) - 1), color] for i, color in enumerate(colorscale)]
     
     for column in data.columns:
         temp = data[column]
         temp = (temp.astype(str).str.replace(r"[^\d.-]", "", regex=True))
         temp = pd.to_numeric(temp, errors="coerce")
 
-        hovertemplate = '%{text}<br>' + column + f': {unit}'+'%{z:' + data_format + '}<extra></extra>'
+        hovertemplate = '%{text}<br>' + column + f': {unit}'+'%{customdata[0]:' + data_format + '}<extra></extra>'
 
         # Merge GeoDataFrame with data
         merged_df = map_df.merge(temp, on=geo_level, how='left')
+
+        if len(thresholds) > 0:
+            inc_thresholds = thresholds.copy()
+            inc_thresholds[0] -= (10 ** -dp)
+            inc_thresholds[-1] += (10 ** -dp)
+            merged_df['category'] = pd.cut(
+                merged_df[column],
+                bins=inc_thresholds,
+                labels=list(range(len(colorscale)))
+            )
+            metric = 'category'
+        else:
+            metric = column
 
         if geo_level == 'mca':
             non_mca = merged_df[merged_df['region_type'] == 'non_mca'].copy()
@@ -55,15 +72,16 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                 geojson=mca.__geo_interface__,
                 featureidkey="id",  # Changed from properties.mca
                 locations=mca.index,  # Using index instead of mca column
-                z=mca[column],
+                z=mca[metric],
                 text=mca['region'], # Used to show the region name in the hovertemplate
                 colorscale=colorscale,
                 colorbar=dict(
                     tickformat=data_format, # Add percent sign to the colour scale
                     tickprefix = unit  # Adds the unit (£/$/€) to the colour scale
                 ),
-                showscale=True,
+                showscale=len(thresholds) == 0,
                 name='MCA Regions',
+                customdata=merged_df[[column]],
                 hovertemplate=hovertemplate
             ))
 
@@ -88,7 +106,7 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                             geojson=non_mca.__geo_interface__,
                             featureidkey="id",  # Changed from properties.mca
                             locations=non_mca.index,  # Using index instead of mca column
-                            z=non_mca[column].fillna(0),  # Fill NA with 0 for consistent coloring
+                            z=non_mca[metric].fillna(0),  # Fill NA with 0 for consistent coloring
                             colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
                             showscale=False,
                             name='Non-MCA Regions',
@@ -100,14 +118,15 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                 geojson=merged_df.__geo_interface__,
                 featureidkey=f"properties.{geo_level}",  # Match with GeoJSON properties
                 locations=merged_df[geo_level],  # Geographic identifiers in data
-                z=merged_df[column],  # Use precomputed indices for color
+                z=merged_df[metric],  # Use precomputed indices for color
                 text=merged_df['region'], # Used to show the region name in the hovertemplate
                 colorscale=colorscale,  # Reverse the Viridis colour scale
                 colorbar=dict(
                     tickformat=data_format, # Add percent sign to the colour scale
                     tickprefix = unit
                 ),
-                showscale=True,  # Show the colour scale
+                showscale=len(thresholds) == 0,  # Show the colour scale
+                customdata=merged_df[[column]],
                 hovertemplate=hovertemplate
             ))
             
@@ -118,11 +137,72 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                     geojson=missing_values_df.__geo_interface__,
                     featureidkey=f"properties.{geo_level}",  # Match with GeoJSON properties
                     locations=missing_values_df[geo_level],  # Geographic identifiers in data
-                    z=missing_values_df[column].fillna(0),  # Fill NA with 0 for consistent coloring
+                    z=missing_values_df[metric].fillna(0),  # Fill NA with 0 for consistent coloring
                     colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
                     showscale=False,  # Show the colour scale
                     hoverinfo='skip'
                 ))
+        
+        if len(thresholds) > 0:
+            # Legend positioning
+            legend_x = 0.9
+            legend_y_start = 1
+            box_width = 0.03
+            spacing = 0.08
+
+            shapes = []
+            annotations = []
+
+            for i in range(len(thresholds) - 1):
+                y_position = legend_y_start - i * spacing
+
+                # Add colour box (rectangle)
+                shapes.append(dict(
+                    type="rect",
+                    xref="paper", yref="paper",
+                    x0=legend_x - 0.015, x1=legend_x + box_width - 0.015,
+                    y0=y_position - 0.04, y1=y_position,
+                    fillcolor=colorscale[i][1],
+                    line=dict(width=1, color="black")
+                ))
+
+                if i == 5:
+                    y_position -= 0.013
+                if i == 0:
+                    bounds_text = f"{thresholds[i]:.{dp}f} ≤"
+                else:
+                    bounds_text = f"{thresholds[i]:.{dp}f} <"
+                # Left label (threshold1 <)
+                annotations.append(dict(
+                    x=legend_x - 0.02,  # Left of the colour box
+                    y=y_position,
+                    xref="paper", yref="paper",
+                    text=bounds_text,
+                    showarrow=False,
+                    align="right",
+                    xanchor="right",
+                    font=dict(size=12, color="black")
+                ))
+
+                # Right label (< threshold2)
+                annotations.append(dict(
+                    x=legend_x + box_width - 0.01,  # Right of the colour box
+                    y=y_position,
+                    xref="paper", yref="paper",
+                    text=f"≤ {thresholds[i + 1]:.{dp}f}",
+                    showarrow=False,
+                    align="left",
+                    xanchor="left",
+                    font=dict(size=12, color="black")
+                ))
+
+            # Update layout
+            fig.update_layout(
+                shapes=shapes,
+                annotations=annotations,
+                margin=dict(r=200)  # Extra space for legend
+            )
+
 
         # Update layout
         fig.update_geos(

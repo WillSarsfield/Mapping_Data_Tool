@@ -76,7 +76,7 @@ def load_css(filepath):
         st.html(f"<style>{f.read()}</style>")
 
 @st.cache_data
-def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2):
+def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2, thresholds=[]):
     if df.iloc[:, 0][0][:2] == 'TL':
         geo_level = f'itl{str(len(df.iloc[:, 0][0]) - 2)}'
         map_df = make_map_itl(geo_level)
@@ -89,7 +89,7 @@ def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2)
         map_df = make_map_authorities(geo_level)
         df = df.rename(columns={df.columns[0]: geo_level})
     mapnames = list(df.set_index(geo_level).columns)
-    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, colorscale, show_missing_values, units, dp)
+    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, colorscale, show_missing_values, units, dp, thresholds)
     return fig, mapnames
     
 def main():
@@ -119,10 +119,6 @@ def main():
         df = st.session_state.df
     else:
         df = pd.DataFrame()
-
-    if 'rerun' not in st.session_state:
-        st.session_state.rerun = False
-
 
     # Load CSS from assets
     load_css('assets/styles.css')
@@ -206,7 +202,7 @@ def main():
             if not new_title:
                 st.sidebar.error("Cannot accept empty title.")
                 valid_input = False
-            if not re.match(r"^[A-Za-z0-9 _\-\[\]\{\}\(\),.]*$", new_title) and valid_input:
+            if not re.match(r"^[A-Za-z0-9 _\-\[\]\{\}\(\),.%*&]*$", new_title) and valid_input:
                 st.sidebar.error("Invalid characters, please do not include special characters.")
                 valid_input = False
             if len(new_title) > 70 and valid_input:
@@ -219,7 +215,6 @@ def main():
             if mapname != list(df.columns[1:]):
                 st.session_state.df = df
                 st.session_state.mapname = list(df.columns[1:])
-                st.session_state.rerun = True
                 st.rerun()
     else:
         st.sidebar.selectbox("Select map", options=mapname)
@@ -233,64 +228,91 @@ def main():
     # Colour change options
     discrete_colours = st.sidebar.toggle(label='Use discrete colouring')
     num_colours = st.sidebar.slider("Number of Colours", min_value=2, max_value=6, value=5)
-    if not df.empty:
-        min_val = df[mapname[st.session_state.index]].min()
-        max_val = df[mapname[st.session_state.index]].max()
-        # Create evenly spaced thresholds
-        thresholds = np.linspace(min_val, max_val, num_colours+2)
-        thresholds = thresholds[1:-1]
-    else:
-        thresholds = np.linspace(0, 100, num_colours+2)
-        thresholds = thresholds[1:-1]
+
+    if not df.empty and 'index' in st.session_state:
+        df[mapname[st.session_state.index]] = (df[mapname[st.session_state.index]].astype(str).str.replace(r"[^\d.-]", "", regex=True))
+        df[mapname[st.session_state.index]] = pd.to_numeric(df[mapname[st.session_state.index]], errors="coerce")
+
     # Colour pickers
     colours = []
     # Create two columns in the sidebar using container
     with st.sidebar.container():
         colour_column1, colour_column2 = st.columns([1, 1])  # Create two columns
         if discrete_colours:
-            format_str = f"%.{dp}f"
-            for i in range(num_colours):
-                if i > 2:
+            step = float(10 ** -dp)
+            # Create evenly spaced thresholds
+            if not df.empty:
+                min_val = df[mapname[st.session_state.index]].min()
+                max_val = df[mapname[st.session_state.index]].max()
+                thresholds = np.linspace(min_val, max_val, num_colours+1)
+            else:
+                thresholds = np.linspace(0, 100, num_colours+1)
+                min_val = 0
+                max_val = 100
+            if thresholds[-1] > 10000:
+                st.markdown("""
+                    <style>
+                        /* Increase the sidebar width */
+                        [data-testid="stSidebar"] {
+                            min-width: 500px;  /* Minimum width */
+                            max-width: 500px;  /* Maximum width */
+                        }
+                    </style>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                    <style>
+                        /* Increase the sidebar width */
+                        [data-testid="stSidebar"] {
+                            min-width: 300px;  /* Minimum width */
+                            max-width: 300px;  /* Maximum width */
+                        }
+                    </style>
+                """, unsafe_allow_html=True)
+            # Discrete colouring needs to get thresholds too
+            for i in range(1, num_colours + 1):
+                if i > 3:
                     with colour_column2:  # Use the second column for colours after index 2
-                        if i == 3:
-                            colour = st.color_picker(f"Pick Colour {i+1}", "#47be6d")
-                            if num_colours == i + 1:
-                                thresholds[i] = st.number_input(f'< Colour {i+1}', value=float(thresholds[i]), format=format_str)
+                        if i == 4:
+                            colour = st.color_picker(f"Pick Colour {i}", "#47be6d")
+                            if num_colours != i:
+                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + 0.01), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=float(thresholds[i]), step=step)
                             else:
-                                thresholds[i] = st.number_input(f'< Colour {i+1} <', value=float(thresholds[i]), format=format_str)
-                        elif i == 4:
-                            colour = st.color_picker(f"Pick Colour {i+1}", "#f4e625")
-                            if num_colours == i + 1:
-                                thresholds[i] = st.number_input(f'< Colour {i+1}', value=float(thresholds[i]), format=format_str)
+                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + 0.01), max_value=float(thresholds[i]), value=float(thresholds[i]), step=step)
+                        elif i == 5:
+                            colour = st.color_picker(f"Pick Colour {i}", "#f4e625")
+                            if num_colours != i:
+                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + 0.01), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=float(thresholds[i]), step=step)
                             else:
-                                thresholds[i] = st.number_input(f'< Colour {i+1} <', value=float(thresholds[i]), format=format_str)
+                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + 0.01), max_value=float(thresholds[i]), value=float(thresholds[i]), step=step)
                         else:
-                            colour = st.color_picker(f"Pick Colour {i+1}", "#ffffff")
-                            if num_colours == i + 1:
-                                thresholds[i] = st.number_input(f'< Colour {i+1}', value=float(thresholds[i]), format=format_str)
+                            colour = st.color_picker(f"Pick Colour {i}", "#ffffff")
+                            if num_colours != i:
+                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + 0.01), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=float(thresholds[i]), step=step)
                             else:
-                                thresholds[i] = st.number_input(f'< Colour {i+1} <', value=float(thresholds[i]), format=format_str)
+                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + 0.01), max_value=float(thresholds[i]), value=float(thresholds[i]), step=step)
                         colours.append(colour)
                 else:
                     with colour_column1:  # Use the first column for the first 3 colours
-                        if i == 0:
-                            colour = st.color_picker(f"Pick Colour {i+1}", "#440255")
-                            thresholds[i] = st.number_input(f'Colour {i+1} <', value=float(thresholds[i]), format=format_str)
-                        elif i == 1:
-                            colour = st.color_picker(f"Pick Colour {i+1}", "#39538b")
-                            if num_colours == i + 1:
-                                thresholds[i] = st.number_input(f'< Colour {i+1}', value=float(thresholds[i]), format=format_str)
-                            else:
-                                thresholds[i] = st.number_input(f'< Colour {i+1} <', value=float(thresholds[i]), format=format_str)
+                        if i == 1:
+                            colour = st.color_picker(f"Pick Colour {i}", "#440255")
+                            thresholds[i-1], thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1]), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=[float(thresholds[i-1]), float(thresholds[i])], step=step)
                         elif i == 2:
-                            colour = st.color_picker(f"Pick Colour {i+1}", "#26828e")
-                            if num_colours == i + 1:
-                                thresholds[i] = st.number_input(f'< Colour {i+1}', value=float(thresholds[i]), format=format_str)
+                            colour = st.color_picker(f"Pick Colour {i}", "#39538b")
+                            if num_colours != i:
+                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + 0.01), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=float(thresholds[i]), step=step)
                             else:
-                                thresholds[i] = st.number_input(f'< Colour {i+1} <', value=float(thresholds[i]), format=format_str)
+                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + 0.01), max_value=float(thresholds[i]), value=float(thresholds[i]), step=step)
+                        elif i == 3:
+                            colour = st.color_picker(f"Pick Colour {i}", "#26828e")
+                            if num_colours != i:
+                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + 0.01), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=float(thresholds[i]), step=step)
+                            else:
+                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + 0.01), max_value=float(thresholds[i]), value=float(thresholds[i]), step=step)
                         colours.append(colour)
-            print(thresholds)
+            custom_colour_scale = colours
         else:
+            thresholds=[]
             for i in range(num_colours):
                 if i > 2:
                     with colour_column2:  # Use the second column for colours after index 2
@@ -311,14 +333,14 @@ def main():
                             colour = st.color_picker(f"Pick Colour {i+1}", "#26828e")
                         colours.append(colour)
 
-    custom_colour_scale = generate_colour_scale(colours)
+            custom_colour_scale = generate_colour_scale(colours)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     
 
     # Labeling options
     if fig:
         # Save session state variables and load figure
-        st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp)
+        st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp, thresholds)
         st.session_state.df = df
         figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True)
         st.session_state.index = index
