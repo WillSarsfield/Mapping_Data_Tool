@@ -64,25 +64,40 @@ def generate_colour_scale(colours, n=256):
         colour_scale.extend([f"rgb({int(r)},{int(g)},{int(b)})" for r, g, b in interpolated])
     return colour_scale[::-1]
 
+def assign_itl_level(code):
+    length = len(code)
+    if length == 3:
+        return 'ITL1'
+    elif length == 4:
+        return 'ITL2'
+    elif length == 5:
+        return 'ITL3'
+    
+def assign_ca_level(code):
+    if code[:3] == 'E47' or code[:3] == 'E61':
+        return 'MCA'
+    else:
+        return 'LA'
+
 
 def get_image_as_base64(file_path):
     with open(file_path, "rb") as file:
         data = base64.b64encode(file.read()).decode("utf-8")
     return data
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def load_css(filepath):
     with open(filepath) as f:
         st.html(f"<style>{f.read()}</style>")
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2, thresholds=[]):
-    if df.iloc[:, 0][0][:2] == 'TL':
-        geo_level = f'itl{str(len(df.iloc[:, 0][0]) - 2)}'
+    if df.iloc[0, 0][:2] == 'TL':
+        geo_level = f'itl{str(len(df.iloc[0, 0]) - 2)}'
         map_df = make_map_itl(geo_level)
         df = df.rename(columns={df.columns[0]: geo_level})
-    elif len(df.iloc[:, 0][0]) == 9:
-        if df.iloc[:, 0][0][:3] == 'E47' or df.iloc[:, 0][0][:3] == 'E61':  # E47 = MCA, E61 = GLA
+    elif len(df.iloc[0, 0]) == 9:
+        if df.iloc[0, 0][:3] == 'E47' or df.iloc[0, 0][:3] == 'E61':  # E47 = MCA, E61 = GLA
             geo_level = 'mca'
         else:
             geo_level = 'la'
@@ -120,6 +135,16 @@ def main():
     else:
         df = pd.DataFrame()
 
+    if 'levels' in st.session_state:
+        levels = st.session_state.levels
+    else:
+        levels = []
+
+    if 'level' in st.session_state:
+        level = st.session_state.level
+    else:
+        level = ''
+
     # Load CSS from assets
     load_css('assets/styles.css')
     # Intro to tool above tool itself
@@ -128,17 +153,34 @@ def main():
 
         st.markdown(
             """
-
+            ### Intro
             ###### Developed by the [TPI Productivity Lab](https://www.productivity.ac.uk/the-productivity-lab/), this tool allows for the quick creation of custom choropleth maps of regions in the United Kingdom, allowing for visual comparisons of different metrics across different geographic areas.
 
-            ##### This tool can produce multiple maps in 3 simple steps:
-            - **Construct your custom data file**: First construct a CSV file containing your data alongside relevant region codes. Examples are provided on how to do this.
+            ##### This tool can produce custom maps in 3 simple steps:
+            - **Construct your custom data file**: First construct a CSV file containing your data alongside relevant region codes. Examples are provided on how to do this [here](https://www.lab.productivity.ac.uk/tools/custom-maps).
             - **Upload your data**: Click *Browse Files* below, locate your file, and then press *Upload File*.
             - **Customise your map**: Use the options on the sidebar to alter the colour, view, and units.
+
+            ##### If you want to see some examples of what this tool can do, select one of the pre-existing data sets below.
+
+            ### Customisation Options
+            #### Map navigation
+            - **Select map**: shows the list of maps produced from the data selected. The names of the maps are the respective column names in the data file.
+            - **Change title**: rename the map you are currently working on. (Character limit: 70)
+            - **Select geography level**: if your map has 2 or more different types of region codes in the first column, these types will show up in this menu allowing you to choose which type to use.
+            #### Formatting
+            - **Select units**: choose the units you wish to use from this menu. The selected unit will format the hover data and colourscale/key.
+            - **Select decimal places**: choose the number of decimal places you would like your data to be rounded to. The selected number of decimal places will format the hover data and colourscale/key.
+            - **Hide the rest of the UK**: enabling this will remove any regions missing data in the map.
+            #### Colour options
+            - **Use discrete colouring**: enable this to use solid colouring within specified bounds. Here you will be given the option to classify your data into coloured categories based on the bounds you select.
+            - **Number of colours**: choose the number of colours used to define the colour scale/colour categories. (minimum 2, maximum 6)
+            - **Pick colours**: pick a colour from the colour selection interface or enter a hex code for a specific colour in your scale/categorisations. If using discrete colouring, you can also specify a range in which this colour categorises data on the map.
             """
             )
 
     figure = st.empty()
+    figure_loading = st.empty()
     if fig:
         figure.markdown(
         """
@@ -153,6 +195,7 @@ def main():
     with st.expander(label="Pre-existing datasets from **The Productivity Institute Data Lab**", expanded=True):
         # Create buttons with associated images
         col1, col2, col3, col4 = st.columns(4)
+        #print(get_image_as_base64('static/TPI_Logo_ITL2trade.png'))
         # Image button for Dataset 1
         with col1:
             if st.button(label='', key='Example_button1'):
@@ -167,6 +210,9 @@ def main():
         with col2:
             if st.button(label='', key='Example_button2'):
                 df = pd.read_csv("examples/ITL1_Scorecard_input_data_percentage.csv")
+                fig, mapname = get_figures(df)
+            if st.button(label='', key='Example_button6'):
+                df = pd.read_csv("examples/ITL2_example.csv")
                 fig, mapname = get_figures(df)
 
         with col3:
@@ -188,6 +234,21 @@ def main():
         if upload_file:
             st.success(f"Filepath set to: {upload_file.name}")
             df = pd.read_csv(upload_file)
+            levels = df.iloc[:, 0]
+            if df.iloc[:, 0][0][:2] == 'TL':
+                levels['ITL_Level'] = df[df.columns[0]].apply(assign_itl_level)
+                levels = list(levels['ITL_Level'].drop_duplicates())
+                if len(levels) > 1:
+                    st.session_state.levels = levels
+                    level = levels[0]
+                    st.session_state.level = levels[0]
+            else:
+                levels['CA_Level'] = df[df.columns[0]].apply(assign_ca_level)
+                levels = list(levels['CA_Level'].drop_duplicates())
+                if len(levels) > 1:
+                    st.session_state.levels = levels
+                    level = levels[0]
+                    st.session_state.level = levels[0]
             st.session_state.index = 0
             # Generate maps for options in menu
             fig, mapname = get_figures(df)
@@ -206,7 +267,6 @@ def main():
                 st.sidebar.error("Invalid characters, please do not include special characters.")
                 valid_input = False
             if len(new_title) > 70 and valid_input:
-                print(len(new_title))
                 st.sidebar.error("Exceeded character limit, please use no more than 50 characters.")
                 valid_input = False
             if valid_input:
@@ -218,6 +278,20 @@ def main():
                 st.rerun()
     else:
         st.sidebar.selectbox("Select map", options=mapname)
+    if len(levels) > 1:
+        level = st.sidebar.selectbox("Select geography level", options=levels, index=levels.index(level))
+        if 'TL' == levels[0][:2]:
+            level_to_length = {'ITL1': 3, 'ITL2': 4, 'ITL3': 5}
+            st.session_state.df = df
+            df = df.loc[df[df.columns[0]].str.len() == level_to_length[level]].copy()
+        else:
+            st.session_state.df = df
+            if level == 'MCA':
+                df = df.loc[df[df.columns[0]].str[:3].isin(['E47', 'E61'])].copy()
+            else:
+                df = df.loc[~df[df.columns[0]].str[:3].isin(['E47', 'E61'])].copy()
+    else:
+        st.session_state.df = df
     # Sidebar updates after upload
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     unit_options = ['None', '%', '£', '$', '€']
@@ -229,7 +303,7 @@ def main():
     discrete_colours = st.sidebar.toggle(label='Use discrete colouring')
     num_colours = st.sidebar.slider("Number of Colours", min_value=2, max_value=6, value=5)
 
-    if not df.empty and 'index' in st.session_state:
+    if not df.empty and 'index' in st.session_state and mapname:
         df[mapname[st.session_state.index]] = (df[mapname[st.session_state.index]].astype(str).str.replace(r"[^\d.-]", "", regex=True))
         df[mapname[st.session_state.index]] = pd.to_numeric(df[mapname[st.session_state.index]], errors="coerce")
 
@@ -241,7 +315,7 @@ def main():
         if discrete_colours:
             step = float(10 ** -dp)
             # Create evenly spaced thresholds
-            if not df.empty:
+            if not df.empty and mapname:
                 min_val = df[mapname[st.session_state.index]].min()
                 max_val = df[mapname[st.session_state.index]].max()
                 thresholds = np.linspace(min_val, max_val, num_colours+1)
@@ -340,11 +414,13 @@ def main():
     # Labeling options
     if fig:
         # Save session state variables and load figure
-        st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp, thresholds)
-        st.session_state.df = df
-        figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True)
+        with figure_loading.container():
+            with st.spinner('Loading map...'):
+                st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp, thresholds)
+                figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True)
         st.session_state.index = index
 
 
 if __name__ == '__main__':
+    pd.options.mode.copy_on_write = True
     main()

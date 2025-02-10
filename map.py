@@ -169,9 +169,9 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                 if i == 5:
                     y_position -= 0.013
                 if i == 0:
-                    bounds_text = f"{thresholds[i]:.{dp}f} ≤"
+                    bounds_text = f"{unit}{thresholds[i]:{data_format}} ≤"
                 else:
-                    bounds_text = f"{thresholds[i]:.{dp}f} <"
+                    bounds_text = f"{unit}{thresholds[i]:{data_format}} <"
                 # Left label (threshold1 <)
                 annotations.append(dict(
                     x=legend_x - 0.02,  # Left of the colour box
@@ -189,7 +189,7 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                     x=legend_x + box_width - 0.01,  # Right of the colour box
                     y=y_position,
                     xref="paper", yref="paper",
-                    text=f"≤ {thresholds[i + 1]:.{dp}f}",
+                    text=f"≤ {unit}{thresholds[i + 1]:{data_format}}",
                     showarrow=False,
                     align="left",
                     xanchor="left",
