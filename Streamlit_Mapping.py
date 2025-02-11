@@ -11,6 +11,7 @@ def make_map_itl(itl_level):
     itlmapping = pd.read_csv('src/itlmapping.csv')
     itl3_shapes_df = gpd.read_file('src/International_Territorial_Level_3_(January_2021)_UK_BUC_V3.geojson')
     map_df = itl3_shapes_df.rename(columns={'ITL321CD': 'itl3'})
+    # Merge up from ITL3 level to target level
     map_df = map_df.merge(itlmapping, how='left', on='itl3')
     if itl_level != 'itl3':
         map_df = map_df.groupby([itl_level, f'{itl_level}name']).geometry.apply(lambda x: x.union_all()).reset_index()
@@ -64,6 +65,7 @@ def generate_colour_scale(colours, n=256):
         colour_scale.extend([f"rgb({int(r)},{int(g)},{int(b)})" for r, g, b in interpolated])
     return colour_scale[::-1]
 
+# Determine itl code level
 def assign_itl_level(code):
     length = len(code)
     if length == 3:
@@ -72,37 +74,42 @@ def assign_itl_level(code):
         return 'ITL2'
     elif length == 5:
         return 'ITL3'
-    
+    else:
+        return ''
+
+# Determine authority code level
 def assign_ca_level(code):
     if code[:3] == 'E47' or code[:3] == 'E61':
         return 'MCA'
-    else:
+    elif len(code) == 9:
         return 'LA'
+    else:
+        return ''
 
-
+# Convert image to base 64 (streamlit only displays base 64), these codes are put in styles.css
 def get_image_as_base64(file_path):
     with open(file_path, "rb") as file:
         data = base64.b64encode(file.read()).decode("utf-8")
     return data
 
+# Load css styling
 @st.cache_data(show_spinner=False)
 def load_css(filepath):
     with open(filepath) as f:
         st.html(f"<style>{f.read()}</style>")
 
+# Select ITL or authority, get the respective map file, construct the map figures
 @st.cache_data(show_spinner=False)
 def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2, thresholds=[]):
     if df.iloc[0, 0][:2] == 'TL':
-        geo_level = f'itl{str(len(df.iloc[0, 0]) - 2)}'
+        geo_level = assign_itl_level(df.iloc[0, 0]).lower()
         map_df = make_map_itl(geo_level)
-        df = df.rename(columns={df.columns[0]: geo_level})
     elif len(df.iloc[0, 0]) == 9:
-        if df.iloc[0, 0][:3] == 'E47' or df.iloc[0, 0][:3] == 'E61':  # E47 = MCA, E61 = GLA
-            geo_level = 'mca'
-        else:
-            geo_level = 'la'
+        geo_level = assign_ca_level(df.iloc[0, 0]).lower()
         map_df = make_map_authorities(geo_level)
-        df = df.rename(columns={df.columns[0]: geo_level})
+    else:
+        return [], []
+    df = df.rename(columns={df.columns[0]: geo_level})
     mapnames = list(df.set_index(geo_level).columns)
     fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, colorscale, show_missing_values, units, dp, thresholds)
     return fig, mapnames
@@ -179,8 +186,10 @@ def main():
             """
             )
 
+    # Placeholders for the maps
     figure = st.empty()
     figure_loading = st.empty()
+    # Save space for the map while it is switching states
     if fig:
         figure.markdown(
         """
@@ -195,7 +204,7 @@ def main():
     with st.expander(label="Pre-existing datasets from **The Productivity Institute Data Lab**", expanded=True):
         # Create buttons with associated images
         col1, col2, col3, col4 = st.columns(4)
-        #print(get_image_as_base64('static/TPI_Logo_ITL2trade.png'))
+        #print(get_image_as_base64('static/ONS_logo_subnationaltrade2022.png'))
         # Image button for Dataset 1
         with col1:
             if st.button(label='', key='Example_button1'):
@@ -219,6 +228,13 @@ def main():
             if st.button(label='', key='Example_button3'):
                 df = pd.read_csv("examples/MCA-ITL3_scorecards_data_file_modified.csv")
                 fig, mapname = get_figures(df)
+            if st.button(label='', key='Example_button7'):
+                df = pd.read_csv("examples/ITL_trade_2022.csv")
+                levels = ['ITL1', 'ITL2', 'ITL3']
+                st.session_state.levels = levels
+                level = levels[0]
+                st.session_state.level = levels[0]
+                fig, mapname = get_figures(df)
 
         # Image button for Dataset 2
         with col4:
@@ -234,36 +250,37 @@ def main():
         if upload_file:
             st.success(f"Filepath set to: {upload_file.name}")
             df = pd.read_csv(upload_file)
+            # Find the levels in the first column
             levels = df.iloc[:, 0]
-            if df.iloc[:, 0][0][:2] == 'TL':
-                levels['ITL_Level'] = df[df.columns[0]].apply(assign_itl_level)
-                levels = list(levels['ITL_Level'].drop_duplicates())
-                if len(levels) > 1:
-                    st.session_state.levels = levels
-                    level = levels[0]
-                    st.session_state.level = levels[0]
-            else:
-                levels['CA_Level'] = df[df.columns[0]].apply(assign_ca_level)
-                levels = list(levels['CA_Level'].drop_duplicates())
-                if len(levels) > 1:
-                    st.session_state.levels = levels
-                    level = levels[0]
-                    st.session_state.level = levels[0]
+            levels['ITL_Level'] = df[df.columns[0]].apply(assign_itl_level)
+            levels['CA_Level'] = df[df.columns[0]].apply(assign_ca_level)
+            levels = list(levels['ITL_Level'].drop_duplicates()) + list(levels['CA_Level'].drop_duplicates())
+            if '' in levels:
+                levels.remove('')
+            if len(levels) > 1:
+                st.session_state.levels = levels
+                level = levels[0]
+                st.session_state.level = levels[0]
             st.session_state.index = 0
             # Generate maps for options in menu
             fig, mapname = get_figures(df)
+            if not fig:
+                st.error("Region code not recognised.")
         else:
             st.error("No file uploaded yet.")
 
+    # If there are maps to switch between then display the select box
     if mapname:
         st.session_state.index = mapname.index(st.sidebar.selectbox("Select map", options=mapname, index=index))
+        # Text box to change current map title
         new_title = st.sidebar.text_input('Change title',value=mapname[st.session_state.index])
+        # Validate input: must not be empty, must be the characters in the regex, cannot be longer than 70 characters
         valid_input = True
         if not df.empty:
             if not new_title:
                 st.sidebar.error("Cannot accept empty title.")
                 valid_input = False
-            if not re.match(r"^[A-Za-z0-9 _\-\[\]\{\}\(\),.%*&]*$", new_title) and valid_input:
+            if not re.match(r"^[A-Za-z0-9 _\-\[\]\{\}\(\),.%*&:]*$", new_title) and valid_input:
                 st.sidebar.error("Invalid characters, please do not include special characters.")
                 valid_input = False
             if len(new_title) > 70 and valid_input:
@@ -277,10 +294,12 @@ def main():
                 st.session_state.mapname = list(df.columns[1:])
                 st.rerun()
     else:
+        # Otherwise show empty select box
         st.sidebar.selectbox("Select map", options=mapname)
+    # If there is more than one geography level in the data then allow the user to select
     if len(levels) > 1:
         level = st.sidebar.selectbox("Select geography level", options=levels, index=levels.index(level))
-        if 'TL' == levels[0][:2]:
+        if 'ITL' == level[:3]:
             level_to_length = {'ITL1': 3, 'ITL2': 4, 'ITL3': 5}
             st.session_state.df = df
             df = df.loc[df[df.columns[0]].str.len() == level_to_length[level]].copy()
@@ -323,6 +342,10 @@ def main():
                 thresholds = np.linspace(0, 100, num_colours+1)
                 min_val = 0
                 max_val = 100
+            if any(np.isnan(x) for x in thresholds):
+                thresholds = np.linspace(0, 100, num_colours+1)
+                min_val = 0
+                max_val = 100
             if thresholds[-1] > 10000:
                 st.markdown("""
                     <style>
@@ -345,6 +368,8 @@ def main():
                 """, unsafe_allow_html=True)
             # Discrete colouring needs to get thresholds too
             for i in range(1, num_colours + 1):
+                if thresholds[i-1] == thresholds[i]:
+                    thresholds[i] += 0.01
                 if i > 3:
                     with colour_column2:  # Use the second column for colours after index 2
                         if i == 4:
