@@ -6,7 +6,6 @@ import numpy as np
 import plotly.express as px
 import base64
 import re
-import math
 
 def make_map_itl(itl_level):
     itlmapping = pd.read_csv('src/itlmapping.csv')
@@ -181,7 +180,7 @@ def main():
             - **Select decimal places**: choose the number of decimal places you would like your data to be rounded to. The selected number of decimal places will format the hover data and colourscale/key.
             - **Hide the rest of the UK**: enabling this will remove any regions missing data in the map.
             #### Colour options
-            - **Use discrete colouring**: enable this to use solid colouring within specified bounds. Here you will be given the option to classify your data into coloured categories based on the bounds you select.
+            - **Use discrete colouring**: enable this to use solid colouring within specified bounds. Here you will be given the option to classify your data into coloured categories based on the bounds you select. Precise data will be inflated to account for the small increments.
             - **Number of colours**: choose the number of colours used to define the colour scale/colour categories. (minimum 2, maximum 6)
             - **Pick colours**: pick a colour from the colour selection interface or enter a hex code for a specific colour in your scale/categorisations. If using discrete colouring, you can also specify a range in which this colour categorises data on the map.
             """
@@ -346,7 +345,14 @@ def main():
                 thresholds = np.linspace(0, 100, num_colours+1)
                 min_val = 0
                 max_val = 100
-            if thresholds[-1] > 10000:
+            thresholds = [round(x, 5) for x in thresholds]
+            # Discrete colouring needs to get thresholds too
+            non_zero_thresholds = [abs(x) for x in thresholds if x != 0]
+            step = float(abs(min([(-len(str(val).split('.')[-1].rstrip('0'))) if '.' in str(val) else 1 for val in non_zero_thresholds] + [-dp])))
+            precision = 1
+            if step > 2:
+                precision = 10 ** (step - 1)
+            if thresholds[-1] * precision > 1000:
                 st.markdown("""
                     <style>
                         /* Increase the sidebar width */
@@ -366,52 +372,98 @@ def main():
                         }
                     </style>
                 """, unsafe_allow_html=True)
-            # Discrete colouring needs to get thresholds too
-            step = float(10 ** -dp)
-            non_zero_thresholds = [abs(x) for x in thresholds if x != 0]
-            step = min([10 ** (-len(str(val).split('.')[-1].rstrip('0'))) if '.' in str(val) else 1 for val in non_zero_thresholds] + [step])
+            print('step', step)
+            print('precision', precision)
+            print(thresholds)
             for i in range(1, num_colours + 1):
                 if thresholds[i-1] == thresholds[i]:
-                    thresholds[i] += step
+                    thresholds[i] += 1/precision
                 if i > 3:
                     with colour_column2:  # Use the second column for colours after index 2
                         if i == 4:
                             colour = st.color_picker(f"Pick Colour {i}", "#47be6d")
                             if num_colours != i:
-                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + step), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=float(thresholds[i]), step=step)
+                                thresholds[i] = st.slider(f'Colour {i} range:',
+                                min_value=float(thresholds[i-1]) * precision + 0.01,
+                                max_value=(min(float(thresholds[i+1]), float(thresholds[-1])) * precision)  - 0.02,
+                                value=float(thresholds[i]) * precision,
+                                step=1/precision) / precision
                             else:
-                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + step), max_value=float(thresholds[i]), value=float(thresholds[i]), step=step)
+                                thresholds[i] = st.slider(f'Colour {i} range:', 
+                                min_value=float(thresholds[i-1]) * precision + 0.01, 
+                                max_value=float(thresholds[i]) * precision, 
+                                value=float(thresholds[i]) * precision,
+                                step=1/precision) / precision
                         elif i == 5:
                             colour = st.color_picker(f"Pick Colour {i}", "#f4e625")
                             if num_colours != i:
-                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + step), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=float(thresholds[i]), step=step)
+                                thresholds[i] = st.slider(f'Colour {i} range:',
+                                min_value=float(thresholds[i-1]) * precision + 0.01,
+                                max_value=min(float(thresholds[i+1]), float(thresholds[-1])) * precision  - 0.02,
+                                value=float(thresholds[i]) * precision,
+                                step=1/precision) / precision
                             else:
-                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + step), max_value=float(thresholds[i]), value=float(thresholds[i]), step=step)
+                                thresholds[i] = st.slider(f'Colour {i} range:', 
+                                min_value=float(thresholds[i-1]) * precision + 0.01, 
+                                max_value=float(thresholds[i]) * precision, 
+                                value=float(thresholds[i]) * precision,
+                                step=1/precision) / precision
                         else:
                             colour = st.color_picker(f"Pick Colour {i}", "#ffffff")
                             if num_colours != i:
-                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + step), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=float(thresholds[i]), step=step)
+                                thresholds[i] = st.slider(f'Colour {i} range:',
+                                min_value=float(thresholds[i-1]) * precision + 0.01,
+                                max_value=min(float(thresholds[i+1]), float(thresholds[-1])) * precision  - 0.02,
+                                value=float(thresholds[i]) * precision,
+                                step=1/precision) / precision
                             else:
-                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + step), max_value=float(thresholds[i]), value=float(thresholds[i]), step=step)
+                                thresholds[i] = st.slider(f'Colour {i} range:', 
+                                min_value=float(thresholds[i-1]) * precision + 0.01, 
+                                max_value=float(thresholds[i]) * precision, 
+                                value=float(thresholds[i]) * precision,
+                                step=1/precision) / precision
                         colours.append(colour)
                 else:
                     with colour_column1:  # Use the first column for the first 3 colours
                         if i == 1:
                             colour = st.color_picker(f"Pick Colour {i}", "#440255")
-                            thresholds[i-1], thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1]), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=[float(thresholds[i-1]), float(thresholds[i])], step=step)
+                            thresholds[i-1], thresholds[i] = st.slider(f'Colour {i} range:',
+                            min_value=float(thresholds[i-1]) * precision, 
+                            max_value=min(float(thresholds[i+1]), float(thresholds[-1])) * precision  - 0.02, 
+                            value=[float(thresholds[i-1]) * precision, float(thresholds[i]) * precision], 
+                            step=1/precision)
+                            thresholds[i-1] /= precision
+                            thresholds[i] /= precision
                         elif i == 2:
                             colour = st.color_picker(f"Pick Colour {i}", "#39538b")
                             if num_colours != i:
-                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + step), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=float(thresholds[i]), step=step)
+                                thresholds[i] = st.slider(f'Colour {i} range:',
+                                min_value=float(thresholds[i-1]) * precision + 0.01,
+                                max_value=min(float(thresholds[i+1]), float(thresholds[-1])) * precision  - 0.02,
+                                value=float(thresholds[i]) * precision,
+                                step=1/precision) / precision
                             else:
-                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + step), max_value=float(thresholds[i]), value=float(thresholds[i]), step=step)
+                                thresholds[i] = st.slider(f'Colour {i} range:', 
+                                min_value=float(thresholds[i-1]) * precision + 0.01, 
+                                max_value=float(thresholds[i]) * precision, 
+                                value=float(thresholds[i]) * precision,
+                                step=1/precision) / precision
                         elif i == 3:
                             colour = st.color_picker(f"Pick Colour {i}", "#26828e")
                             if num_colours != i:
-                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + step), max_value=min(float(thresholds[i+1]), float(thresholds[-1]) - 0.02), value=float(thresholds[i]), step=step)
+                                thresholds[i] = st.slider(f'Colour {i} range:',
+                                min_value=float(thresholds[i-1]) * precision + 0.01,
+                                max_value=min(float(thresholds[i+1]), float(thresholds[-1])) * precision  - 0.02,
+                                value=float(thresholds[i]) * precision,
+                                step=1/precision) / precision
                             else:
-                                thresholds[i] = st.slider(f'Colour {i} range:', float(thresholds[i-1] + step), max_value=float(thresholds[i]), value=float(thresholds[i]), step=step)
+                                thresholds[i] = st.slider(f'Colour {i} range:', 
+                                min_value=float(thresholds[i-1]) * precision + 0.01, 
+                                max_value=float(thresholds[i]) * precision, 
+                                value=float(thresholds[i]) * precision,
+                                step=1/precision) / precision
                         colours.append(colour)
+                print(float(thresholds[i]))
             custom_colour_scale = colours
         else:
             thresholds=[]
