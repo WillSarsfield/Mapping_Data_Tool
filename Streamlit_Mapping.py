@@ -204,32 +204,37 @@ def main():
     with st.expander(label="Pre-existing datasets from **The Productivity Institute Data Lab**", expanded=True):
         # Create buttons with associated images
         col1, col2, col3, col4 = st.columns(4)
-        #print(get_image_as_base64('static/ONS_logo_subnationaltrade2022.png'))
+        #print(get_image_as_base64('static/ONS_ITLtradebalance.png'))
         # Image button for Dataset 1
         with col1:
             if st.button(label='', key='Example_button1'):
+                levels = []
                 df = pd.read_csv("examples/LA_example.csv")
                 fig, mapname = get_figures(df)
 
             if st.button(label='', key='Example_button5'):
+                levels = []
                 df = pd.read_csv("examples/MCA_digitalisation_innovation.csv")
                 fig, mapname = get_figures(df)
 
         # Image button for Dataset 2
         with col2:
             if st.button(label='', key='Example_button2'):
+                levels = []
                 df = pd.read_csv("examples/ITL1_Scorecard_input_data_percentage.csv")
                 fig, mapname = get_figures(df)
             if st.button(label='', key='Example_button6'):
+                levels = []
                 df = pd.read_csv("examples/ITL2_example.csv")
                 fig, mapname = get_figures(df)
 
         with col3:
             if st.button(label='', key='Example_button3'):
+                levels = []
                 df = pd.read_csv("examples/MCA-ITL3_scorecards_data_file_modified.csv")
                 fig, mapname = get_figures(df)
             if st.button(label='', key='Example_button7'):
-                df = pd.read_csv("examples/ITL_trade_2022.csv")
+                df = pd.read_csv("examples/ITL_tradebalance.csv")
                 levels = ['ITL1', 'ITL2', 'ITL3']
                 st.session_state.levels = levels
                 level = levels[0]
@@ -239,6 +244,7 @@ def main():
         # Image button for Dataset 2
         with col4:
             if st.button(label='', key='Example_button4'):
+                levels = []
                 df = pd.read_csv("examples/ITL3_scorecards_data_file_modified.csv")
                 fig, mapname = get_figures(df)
         
@@ -248,8 +254,20 @@ def main():
     # Button to confirm the selection
     if st.button("Upload File"):
         if upload_file:
-            st.success(f"Filepath set to: {upload_file.name}")
-            df = pd.read_csv(upload_file)
+            try:
+                df = pd.read_csv(upload_file, encoding="utf-8", on_bad_lines='skip', low_memory=False)
+                if df.empty:
+                    st.error("Uploaded CSV is empty")
+                else:
+                    st.success(f"Successfully loaded {upload_file.name}")
+            except UnicodeDecodeError:
+                st.error("Encoding error: Ensure the file is UTF-8 encoded")
+            except pd.errors.ParserError:
+                st.error("Parsing error: check if the csv format is valid")
+            except Exception as e:
+                st.error(f"An unexpected error occured: {e}")
+
+
             # Find the levels in the first column
             levels = df.iloc[:, 0]
             levels['ITL_Level'] = df[df.columns[0]].apply(assign_itl_level)
@@ -311,6 +329,7 @@ def main():
                 df = df.loc[~df[df.columns[0]].str[:3].isin(['E47', 'E61'])].copy()
     else:
         st.session_state.df = df
+        st.session_state.levels = []
     # Sidebar updates after upload
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     unit_options = ['None', '%', '£', '$', '€']
@@ -372,9 +391,6 @@ def main():
                         }
                     </style>
                 """, unsafe_allow_html=True)
-            print('step', step)
-            print('precision', precision)
-            print(thresholds)
             for i in range(1, num_colours + 1):
                 if thresholds[i-1] == thresholds[i]:
                     thresholds[i] += 1/precision
@@ -463,7 +479,7 @@ def main():
                                 value=float(thresholds[i]) * precision,
                                 step=1/precision) / precision
                         colours.append(colour)
-                print(float(thresholds[i]))
+                # print(float(thresholds[i]))
             custom_colour_scale = colours
         else:
             thresholds=[]
