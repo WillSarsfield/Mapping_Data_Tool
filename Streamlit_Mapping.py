@@ -243,7 +243,7 @@ def main():
     def button6_click():
         st.session_state.selected_button = "2025 ITL2 Regional and Global Trade"
         st.session_state.dataset_info = "This dataset contains data about regional and global trade"
-        st.session_state.link = "https://www.linkedin.com/in/nathanmckeogh/"
+        st.session_state.link = "https://www.google.com"
         return "examples/ITL2_example.csv", []
 
     def button7_click():
