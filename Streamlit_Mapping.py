@@ -6,6 +6,7 @@ import numpy as np
 import plotly.express as px
 import base64
 import re
+import plotly.io as pio
 
 def make_map_itl(itl_level):
     itlmapping = pd.read_csv('src/itlmapping.csv')
@@ -334,7 +335,7 @@ def main():
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     unit_options = ['None', '%', '£', '$', '€']
     unit = st.sidebar.selectbox("Select units", options=unit_options)
-    dp = st.sidebar.select_slider("Select decimal places", options=list(range(5)), value=0)
+    dp = st.sidebar.select_slider("Select decimal places", options=list(range(6)), value=0)
     show_missing_values = st.sidebar.toggle(label='Hide the rest of the UK', value=False)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     # Colour change options
@@ -349,13 +350,12 @@ def main():
     colours = []
     # Create two columns in the sidebar using container
     with st.sidebar.container():
-        colour_column1, colour_column2 = st.columns([1, 1])  # Create two columns
         if discrete_colours:
             # Create evenly spaced thresholds
             if not df.empty and mapname:
                 min_val = df[mapname[st.session_state.index]].min()
                 max_val = df[mapname[st.session_state.index]].max()
-                thresholds = np.linspace(min_val, max_val, num_colours+1)
+                thresholds = np.linspace(min_val, float(max_val), num_colours+1)
             else:
                 thresholds = np.linspace(0, 100, num_colours+1)
                 min_val = 0
@@ -365,124 +365,87 @@ def main():
                 min_val = 0
                 max_val = 100
             thresholds = [round(x, 5) for x in thresholds]
-            # Discrete colouring needs to get thresholds too
-            non_zero_thresholds = [abs(x) for x in thresholds if x != 0]
-            step = float(abs(min([(-len(str(val).split('.')[-1].rstrip('0'))) if '.' in str(val) else 1 for val in non_zero_thresholds] + [-dp])))
-            precision = 1
-            if step > 2:
-                precision = 10 ** (step - 1)
-            if thresholds[-1] * precision > 1000:
-                st.markdown("""
-                    <style>
-                        /* Increase the sidebar width */
-                        [data-testid="stSidebar"] {
-                            min-width: 500px;  /* Minimum width */
-                            max-width: 500px;  /* Maximum width */
-                        }
-                    </style>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                    <style>
-                        /* Increase the sidebar width */
-                        [data-testid="stSidebar"] {
-                            min-width: 300px;  /* Minimum width */
-                            max-width: 300px;  /* Maximum width */
-                        }
-                    </style>
-                """, unsafe_allow_html=True)
+            colour_column1, colour_column2, colour_column3, colour_column4, colour_column5 = st.columns(5)  # Create two columns
+            step = float(10**-dp)
             for i in range(1, num_colours + 1):
-                if thresholds[i-1] == thresholds[i]:
-                    thresholds[i] += 1/precision
                 if i > 3:
-                    with colour_column2:  # Use the second column for colours after index 2
-                        if i == 4:
-                            colour = st.color_picker(f"Pick Colour {i}", "#47be6d")
-                            if num_colours != i:
-                                thresholds[i] = st.slider(f'Colour {i} range:',
-                                min_value=float(thresholds[i-1]) * precision + 0.01,
-                                max_value=(min(float(thresholds[i+1]), float(thresholds[-1])) * precision)  - 0.02,
-                                value=float(thresholds[i]) * precision,
-                                step=1/precision) / precision
-                            else:
-                                thresholds[i] = st.slider(f'Colour {i} range:', 
-                                min_value=float(thresholds[i-1]) * precision + 0.01, 
-                                max_value=float(thresholds[i]) * precision, 
-                                value=float(thresholds[i]) * precision,
-                                step=1/precision) / precision
-                        elif i == 5:
-                            colour = st.color_picker(f"Pick Colour {i}", "#f4e625")
-                            if num_colours != i:
-                                thresholds[i] = st.slider(f'Colour {i} range:',
-                                min_value=float(thresholds[i-1]) * precision + 0.01,
-                                max_value=min(float(thresholds[i+1]), float(thresholds[-1])) * precision  - 0.02,
-                                value=float(thresholds[i]) * precision,
-                                step=1/precision) / precision
-                            else:
-                                thresholds[i] = st.slider(f'Colour {i} range:', 
-                                min_value=float(thresholds[i-1]) * precision + 0.01, 
-                                max_value=float(thresholds[i]) * precision, 
-                                value=float(thresholds[i]) * precision,
-                                step=1/precision) / precision
+                    if i == 4:
+                        if num_colours != i:
+                            with colour_column4:
+                                colour = st.color_picker(f"-", "#47be6d", label_visibility='hidden')
+                            with colour_column5:
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(thresholds[i+1]  - step/10), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
                         else:
-                            colour = st.color_picker(f"Pick Colour {i}", "#ffffff")
-                            if num_colours != i:
-                                thresholds[i] = st.slider(f'Colour {i} range:',
-                                min_value=float(thresholds[i-1]) * precision + 0.01,
-                                max_value=min(float(thresholds[i+1]), float(thresholds[-1])) * precision  - 0.02,
-                                value=float(thresholds[i]) * precision,
-                                step=1/precision) / precision
-                            else:
-                                thresholds[i] = st.slider(f'Colour {i} range:', 
-                                min_value=float(thresholds[i-1]) * precision + 0.01, 
-                                max_value=float(thresholds[i]) * precision, 
-                                value=float(thresholds[i]) * precision,
-                                step=1/precision) / precision
-                        colours.append(colour)
+                            with colour_column4:
+                                colour = st.color_picker(f"-", "#47be6d", label_visibility='hidden')
+                            with colour_column5:
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(max_val), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                    elif i == 5:
+                        if num_colours != i:
+                            with colour_column1:
+                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True )
+                            with colour_column2:
+                                colour = st.color_picker(f"-", "#f4e625", label_visibility='hidden')
+                            with colour_column3:
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(thresholds[i+1]  - step/10), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                        else:
+                            with colour_column1:
+                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True )
+                            with colour_column2:
+                                colour = st.color_picker(f"-", "#f4e625", label_visibility='hidden')
+                            with colour_column3:
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(max_val), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                    else:
+                        if num_colours != i:
+                            with colour_column4:
+                                colour = st.color_picker(f"-", "#ffffff", label_visibility='hidden')
+                            with colour_column5:
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(thresholds[i+1]  - step/10), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                        else:
+                            with colour_column4:
+                                colour = st.color_picker(f"-", "#ffffff", label_visibility='hidden')
+                            with colour_column5:
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(max_val), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
                 else:
-                    with colour_column1:  # Use the first column for the first 3 colours
-                        if i == 1:
-                            colour = st.color_picker(f"Pick Colour {i}", "#440255")
-                            thresholds[i-1], thresholds[i] = st.slider(f'Colour {i} range:',
-                            min_value=float(thresholds[i-1]) * precision, 
-                            max_value=min(float(thresholds[i+1]), float(thresholds[-1])) * precision  - 0.02, 
-                            value=[float(thresholds[i-1]) * precision, float(thresholds[i]) * precision], 
-                            step=1/precision)
-                            thresholds[i-1] /= precision
-                            thresholds[i] /= precision
-                        elif i == 2:
-                            colour = st.color_picker(f"Pick Colour {i}", "#39538b")
-                            if num_colours != i:
-                                thresholds[i] = st.slider(f'Colour {i} range:',
-                                min_value=float(thresholds[i-1]) * precision + 0.01,
-                                max_value=min(float(thresholds[i+1]), float(thresholds[-1])) * precision  - 0.02,
-                                value=float(thresholds[i]) * precision,
-                                step=1/precision) / precision
-                            else:
-                                thresholds[i] = st.slider(f'Colour {i} range:', 
-                                min_value=float(thresholds[i-1]) * precision + 0.01, 
-                                max_value=float(thresholds[i]) * precision, 
-                                value=float(thresholds[i]) * precision,
-                                step=1/precision) / precision
-                        elif i == 3:
-                            colour = st.color_picker(f"Pick Colour {i}", "#26828e")
-                            if num_colours != i:
-                                thresholds[i] = st.slider(f'Colour {i} range:',
-                                min_value=float(thresholds[i-1]) * precision + 0.01,
-                                max_value=min(float(thresholds[i+1]), float(thresholds[-1])) * precision  - 0.02,
-                                value=float(thresholds[i]) * precision,
-                                step=1/precision) / precision
-                            else:
-                                thresholds[i] = st.slider(f'Colour {i} range:', 
-                                min_value=float(thresholds[i-1]) * precision + 0.01, 
-                                max_value=float(thresholds[i]) * precision, 
-                                value=float(thresholds[i]) * precision,
-                                step=1/precision) / precision
-                        colours.append(colour)
+                    if i == 1:
+                        with colour_column1:
+                            thresholds[i-1] = st.number_input('<', float(min_val), float(thresholds[i] - step/10), float(thresholds[i-1]), step=step, key=f'-input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                        with colour_column2:
+                            colour = st.color_picker(f"-", "#440255", label_visibility='hidden')
+                        with colour_column3:
+                            thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(thresholds[i+1]  - step/10), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                    elif i == 2:
+                        if num_colours != i:
+                            with colour_column4:
+                                colour = st.color_picker(f"-", "#39538b", label_visibility='hidden')
+                            with colour_column5:
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(thresholds[i+1]  - step/10), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                        else:
+                            with colour_column4:
+                                colour = st.color_picker(f"-", "#39538b", label_visibility='hidden')
+                            with colour_column5:
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(max_val), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                    elif i == 3:
+                        if num_colours != i:
+                            with colour_column1:
+                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True )
+                            with colour_column2:
+                                colour = st.color_picker(f"-", "#26828e", label_visibility='hidden')
+                            with colour_column3:
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(thresholds[i+1]  - step/10), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                        else:
+                            with colour_column1:
+                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True )
+                            with colour_column2:
+                                colour = st.color_picker(f"-", "#26828e", label_visibility='hidden')
+                            with colour_column3:
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(max_val), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                colours.append(colour)
                 # print(float(thresholds[i]))
             custom_colour_scale = colours
         else:
             thresholds=[]
+            colour_column1, colour_column2 = st.columns(2)  # Create two columns
             for i in range(num_colours):
                 if i > 2:
                     with colour_column2:  # Use the second column for colours after index 2
@@ -516,7 +479,29 @@ def main():
                 figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True)
         st.session_state.index = index
 
+        # filename = f"{mapname[st.session_state.index]}.png"
+        # print(filename)
+        # with st.spinner('Preparing map image'):
+        #     # Save the figure as PNG
+        #     pio.write_image(fig[st.session_state.index], filename, format="png", engine="kaleido")
+
+        # # Provide a download link for the PNG file
+        # with open(filename, "rb") as file:
+        #     btn = st.download_button(
+        #         label="Download Plot as PNG",
+        #         data=file,
+        #         file_name=filename,
+        #         mime="image/png"
+        #     )
+        #     print(btn)
+
 
 if __name__ == '__main__':
     pd.options.mode.copy_on_write = True
+    # pio.kaleido.scope.chromium_args = (
+    #     "--headless",
+    #     "--no-sandbox",
+    #     "--single-process",
+    #     "--disable-gpu"
+    # )  # tuple with chromium args
     main()
