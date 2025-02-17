@@ -37,11 +37,6 @@ height: 0%;
     transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth transition for transform and opacity */
 }
 
-.st-key-Example_button1 button:hover {
-    transform: scale(1.1); /* Slightly enlarge the button */
-    opacity: 0.8; /* Reduce opacity for a subtle fade effect */
-}
-
 .st-key-Example_button2 button {
     width: 200px; /* Set width of the button */
     height: 100px; /* Set height of the button */
@@ -51,11 +46,6 @@ height: 0%;
     border: none; /* Remove border */
     cursor: pointer; /* Change cursor to indicate it's clickable */
     transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth transition for transform and opacity */
-}
-
-.st-key-Example_button2 button:hover {
-    transform: scale(1.1); /* Slightly enlarge the button */
-    opacity: 0.8; /* Reduce opacity for a subtle fade effect */
 }
 
 .st-key-Example_button3 button {
@@ -69,11 +59,6 @@ height: 0%;
     transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth transition for transform and opacity */
 }
 
-.st-key-Example_button3 button:hover {
-    transform: scale(1.1); /* Slightly enlarge the button */
-    opacity: 0.8; /* Reduce opacity for a subtle fade effect */
-}
-
 .st-key-Example_button4 button {
     width: 200px; /* Set width of the button */
     height: 100px; /* Set height of the button */
@@ -83,11 +68,6 @@ height: 0%;
     border: none; /* Remove border */
     cursor: pointer; /* Change cursor to indicate it's clickable */
     transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth transition for transform and opacity */
-}
-
-.st-key-Example_button4 button:hover {
-    transform: scale(1.1); /* Slightly enlarge the button */
-    opacity: 0.8; /* Reduce opacity for a subtle fade effect */
 }
 
 .st-key-Example_button5 button {
@@ -101,11 +81,6 @@ height: 0%;
     transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth transition for transform and opacity */
 }
 
-.st-key-Example_button5 button:hover {
-    transform: scale(1.1); /* Slightly enlarge the button */
-    opacity: 0.8; /* Reduce opacity for a subtle fade effect */
-}
-
 .st-key-Example_button6 button {
     width: 200px; /* Set width of the button */
     height: 100px; /* Set height of the button */
@@ -115,11 +90,6 @@ height: 0%;
     border: none; /* Remove border */
     cursor: pointer; /* Change cursor to indicate it's clickable */
     transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth transition for transform and opacity */
-}
-
-.st-key-Example_button6 button:hover {
-    transform: scale(1.1); /* Slightly enlarge the button */
-    opacity: 0.8; /* Reduce opacity for a subtle fade effect */
 }
 
 .st-key-Example_button7 button {
@@ -133,7 +103,25 @@ height: 0%;
     transition: transform 0.3s ease, opacity 0.3s ease; /* Smooth transition for transform and opacity */
 }
 
+.st-key-Example_button1 button:hover,
+.st-key-Example_button2 button:hover,
+.st-key-Example_button3 button:hover,
+.st-key-Example_button4 button:hover,
+.st-key-Example_button5 button:hover,
+.st-key-Example_button6 button:hover,
 .st-key-Example_button7 button:hover {
     transform: scale(1.1); /* Slightly enlarge the button */
     opacity: 0.8; /* Reduce opacity for a subtle fade effect */
+}
+
+/* Default formatting for unselected buttons */
+button[kind="secondary"] {
+    border: none !important;
+    background-color: transparent !important;
+}
+
+/* Formatted with a border for selected buttons */
+button[kind="primary"] {
+    border: 2px solid black !important;
+    background-color: transparent !important;
 }
