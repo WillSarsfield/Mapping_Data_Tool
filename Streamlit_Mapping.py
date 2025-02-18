@@ -389,7 +389,7 @@ def main():
             levels = df.iloc[:, 0]
             levels['ITL_Level'] = df[df.columns[0]].apply(assign_itl_level)
             levels['CA_Level'] = df[df.columns[0]].apply(assign_ca_level)
-            levels = list(levels['ITL_Level'].drop_duplicates()) + list(levels['CA_Level'].drop_duplicates())
+            levels = pd.concat([levels['ITL_Level'], levels['CA_Level']]).drop_duplicates().tolist()
             if '' in levels:
                 levels.remove('')
             if len(levels) > 1:
