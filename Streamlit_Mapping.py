@@ -174,7 +174,7 @@ def main():
             ###### Developed by the [TPI Productivity Lab](https://www.productivity.ac.uk/the-productivity-lab/), this tool allows for the quick creation of custom choropleth maps of regions in the United Kingdom, allowing for visual comparisons of different metrics across different geographic areas.
 
             ##### This tool can produce custom maps in 3 simple steps:
-            - **Construct your custom data file**: First construct a CSV file containing your data alongside relevant region codes. Examples are provided on how to do this [here](https://www.lab.productivity.ac.uk/tools/custom-maps).
+            - **Construct your custom data file**: First construct a CSV file containing your data alongside relevant region codes. Examples are provided on how to do this [here](https://www.lab.productivity.ac.uk/tools/map-tool).
             - **Upload your data**: Click *Browse Files* below, locate your file, and then press *Upload File*.
             - **Customise your map**: Use the options on the sidebar to alter the colour, view, and units.
 
@@ -218,6 +218,10 @@ def main():
         df = pd.read_csv("examples/LA_example.csv")
         if not df.empty:
             fig, mapname = get_figures(df)
+            levels = []
+            level = ''
+            st.session_state.levels = levels
+            st.session_state.level = levels
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -229,6 +233,10 @@ def main():
         df = pd.read_csv("examples/ITL1_Scorecard_input_data_percentage.csv")
         if not df.empty:
             fig, mapname = get_figures(df)
+            levels = []
+            level = ''
+            st.session_state.levels = levels
+            st.session_state.level = levels
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -240,6 +248,10 @@ def main():
         df = pd.read_csv("examples/MCA-ITL3_scorecards_data_file_modified.csv")
         if not df.empty:
                 fig, mapname = get_figures(df)
+                levels = []
+                level = ''
+                st.session_state.levels = levels
+                st.session_state.level = levels
                 st.session_state.fig = fig
                 st.session_state.mapname = mapname
                 st.session_state.df = df
@@ -251,6 +263,10 @@ def main():
         df = pd.read_csv("examples/ITL3_scorecards_data_file_modified.csv")
         if not df.empty:
             fig, mapname = get_figures(df)
+            levels = []
+            level = ''
+            st.session_state.levels = levels
+            st.session_state.level = levels
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -262,6 +278,10 @@ def main():
         df = pd.read_csv("examples/MCA_digitalisation_innovation.csv")
         if not df.empty:
             fig, mapname = get_figures(df)
+            levels = []
+            level = ''
+            st.session_state.levels = levels
+            st.session_state.level = levels
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -273,6 +293,10 @@ def main():
         df = pd.read_csv("examples/ITL2_example.csv")
         if not df.empty:
             fig, mapname = get_figures(df)
+            levels = []
+            level = ''
+            st.session_state.levels = levels
+            st.session_state.level = levels
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -284,6 +308,10 @@ def main():
         df = pd.read_csv("examples/ITL_tradebalance.csv")
         if not df.empty:
             fig, mapname = get_figures(df)
+            levels = ['ITL1', 'ITL2', 'ITL3']
+            level = levels[0]
+            st.session_state.levels = levels
+            st.session_state.level = levels[0]
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -319,9 +347,6 @@ def main():
                 st.rerun()
             if st.button(label='', key='Example_button7', type=button7_type, on_click=button7_click):
                 st.rerun()
-                levels = ['ITL1', 'ITL2', 'ITL3']
-                level = levels[0]
-                st.session_state.level = levels[0]
         
         with col4:
             if st.button(label='', key='Example_button4', type=button4_type, on_click=button4_click):
@@ -336,7 +361,6 @@ def main():
         #         fig, mapname = get_figures(df)
         
         if st.session_state.selected_button:
-            print(st.session_state.selected_button)
             st.markdown(f"### Currently selected: {st.session_state.selected_button}")
             st.write(st.session_state.dataset_info)
             st.markdown(f"[Click here for more information]({st.session_state.link})")
