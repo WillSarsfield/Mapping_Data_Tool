@@ -174,7 +174,7 @@ def main():
             ###### Developed by the [TPI Productivity Lab](https://www.productivity.ac.uk/the-productivity-lab/), this tool allows for the quick creation of custom choropleth maps of regions in the United Kingdom, allowing for visual comparisons of different metrics across different geographic areas.
 
             ##### This tool can produce custom maps in 3 simple steps:
-            - **Construct your custom data file**: First construct a CSV file containing your data alongside relevant region codes. Examples are provided on how to do this [here](https://www.lab.productivity.ac.uk/tools/map-tool).
+            - **Construct your custom data file**: First construct a CSV file containing your data alongside relevant region codes. A step by step guide is provided on how to do this [here](https://www.lab.productivity.ac.uk/tools/map-tool).
             - **Upload your data**: Click *Browse Files* below, locate your file, and then press *Upload File*.
             - **Customise your map**: Use the options on the sidebar to alter the colour, view, and units.
 
