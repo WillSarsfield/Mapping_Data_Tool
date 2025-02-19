@@ -595,29 +595,21 @@ def main():
                 figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True)
         st.session_state.index = index
 
-        # filename = f"{mapname[st.session_state.index]}.png"
-        # print(filename)
-        # with st.spinner('Preparing map image'):
-        #     # Save the figure as PNG
-        #     pio.write_image(fig[st.session_state.index], filename, format="png", engine="kaleido")
+        filename = f"{mapname[st.session_state.index]}.png"
+        # Save the figure as PNG
+        pio.write_image(fig[st.session_state.index], filename, format="png", engine="kaleido")
 
-        # # Provide a download link for the PNG file
-        # with open(filename, "rb") as file:
-        #     btn = st.download_button(
-        #         label="Download Plot as PNG",
-        #         data=file,
-        #         file_name=filename,
-        #         mime="image/png"
-        #     )
+        # Provide a download link for the PNG file
+        with open(filename, "rb") as file:
+            st.download_button(
+                label="Download Plot as PNG",
+                data=file,
+                file_name=filename,
+                mime="image/png"
+            )
         #     print(btn)
 
 
 if __name__ == '__main__':
     pd.options.mode.copy_on_write = True
-    # pio.kaleido.scope.chromium_args = (
-    #     "--headless",
-    #     "--no-sandbox",
-    #     "--single-process",
-    #     "--disable-gpu"
-    # )  # tuple with chromium args
     main()
