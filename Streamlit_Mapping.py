@@ -597,7 +597,7 @@ def main():
 
         filename = f"{mapname[st.session_state.index]}.png"
         # Save the figure as PNG
-        pio.write_image(fig[st.session_state.index], filename, format="png", engine="kaleido")
+        pio.write_image(fig[st.session_state.index], filename, format="png", engine="kaleido", scale=3)
 
         # Provide a download link for the PNG file
         with open(filename, "rb") as file:
