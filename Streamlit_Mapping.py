@@ -482,7 +482,7 @@ def main():
                 max_val = 100
             thresholds = [round(x, 5) for x in thresholds]
             colour_column1, colour_column2, colour_column3, colour_column4, colour_column5 = st.columns(5)  # Create two columns
-            step = float(10**-dp)
+            step = float(10**-(dp+1))
             for i in range(1, num_colours + 1):
                 if i > 3:
                     if i == 4:
@@ -495,22 +495,22 @@ def main():
                             with colour_column4:
                                 colour = st.color_picker(f"-", "#47be6d", label_visibility='hidden')
                             with colour_column5:
-                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(max_val), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), value=float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
                     elif i == 5:
                         if num_colours != i:
                             with colour_column1:
-                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True )
+                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True, key=f'text_input_{i}')
                             with colour_column2:
                                 colour = st.color_picker(f"-", "#f4e625", label_visibility='hidden')
                             with colour_column3:
                                 thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(thresholds[i+1]  - step/10), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
                         else:
                             with colour_column1:
-                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True )
+                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True, key=f'text_input_{i}')
                             with colour_column2:
                                 colour = st.color_picker(f"-", "#f4e625", label_visibility='hidden')
                             with colour_column3:
-                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(max_val), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), value=float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
                     else:
                         if num_colours != i:
                             with colour_column4:
@@ -521,11 +521,11 @@ def main():
                             with colour_column4:
                                 colour = st.color_picker(f"-", "#ffffff", label_visibility='hidden')
                             with colour_column5:
-                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(max_val), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), value=float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
                 else:
                     if i == 1:
                         with colour_column1:
-                            thresholds[i-1] = st.number_input('<', float(min_val), float(thresholds[i] - step/10), float(thresholds[i-1]), step=step, key=f'-input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                            thresholds[i-1] = st.number_input('<', max_value=float(thresholds[i] - step/10), value=float(thresholds[i-1]), step=step, key=f'-input{i}', label_visibility="hidden", format=f'%.{dp}f')
                         with colour_column2:
                             colour = st.color_picker(f"-", "#440255", label_visibility='hidden')
                         with colour_column3:
@@ -540,22 +540,22 @@ def main():
                             with colour_column4:
                                 colour = st.color_picker(f"-", "#39538b", label_visibility='hidden')
                             with colour_column5:
-                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(max_val), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), value=float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
                     elif i == 3:
                         if num_colours != i:
                             with colour_column1:
-                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True )
+                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True, key=f'text_input_{i}')
                             with colour_column2:
                                 colour = st.color_picker(f"-", "#26828e", label_visibility='hidden')
                             with colour_column3:
                                 thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(thresholds[i+1]  - step/10), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
                         else:
                             with colour_column1:
-                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True )
+                                st.text_input('-', f'{float(thresholds[i-1] + step/10):.{dp}f}', label_visibility='hidden', disabled=True, key=f'text_input_{i}')
                             with colour_column2:
                                 colour = st.color_picker(f"-", "#26828e", label_visibility='hidden')
                             with colour_column3:
-                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), float(max_val), float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
+                                thresholds[i] = st.number_input('<', float(thresholds[i-1] + step/10), value=float(thresholds[i]), step=step, key=f'+input{i}', label_visibility="hidden", format=f'%.{dp}f')
                 colours.append(colour)
                 # print(float(thresholds[i]))
             custom_colour_scale = colours
