@@ -1,11 +1,7 @@
-import plotly.graph_objects as go
-from plotly.io import to_image
+import pandas as pd
 
-# Test Plotly GO image export locally
-fig = go.Figure(data=go.Scatter(x=[1, 2, 3], y=[3, 2, 1], mode='markers'))
-print("exporting.....")
-try:
-    img = to_image(fig, format="png")
-    print("Image export successful.")
-except Exception as e:
-    print(f"Image export failed: {e}")
+itlmapping = pd.read_csv('src/itlmapping.csv')
+
+excluded_itl1 = ["TLN", "TLM", "TLL"]
+remaining_itl1 = itlmapping[~itlmapping['itl1'].isin(excluded_itl1)]['itl1'].unique().tolist()
+print(remaining_itl1)

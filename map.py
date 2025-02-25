@@ -25,6 +25,28 @@ def create_placeholder_fig():
     )
     return [fig]
 
+def wrap_title(title, max_length=100):
+    # Split title into words
+    words = title.split()
+    
+    # Initialize variables
+    wrapped_title = ""
+    current_line = ""
+    
+    # Loop through words and split them into lines
+    for word in words:
+        if len(current_line + " " + word) <= max_length:  # Check if the word fits in the current line
+            current_line += " " + word if current_line else word
+        else:
+            # If it doesn't fit, add the current line to wrapped_title and start a new line with <br>
+            wrapped_title += current_line + "<br>"
+            current_line = word
+    
+    # Add the last line to the wrapped_title
+    wrapped_title += current_line
+    
+    return wrapped_title
+
 def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1], show_missing_values=False, units='%', dp=2, thresholds=[]):
     maps = []
     if units == '%':
@@ -216,7 +238,7 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
             )
         
         fig.update_layout(
-            title=f"{column}",
+            title=wrap_title(column, max_length=100),
             margin={"r":0,"t":50,"l":0,"b":0},  # Adjust margins
             height = 550,
             width = 800

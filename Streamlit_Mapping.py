@@ -8,7 +8,7 @@ import base64
 import re
 import plotly.io as pio
 
-def make_map_itl(itl_level):
+def make_map_itl(itl_level, nat=False):
     itlmapping = pd.read_csv('src/itlmapping.csv')
     itl3_shapes_df = gpd.read_file('src/International_Territorial_Level_3_(January_2021)_UK_BUC_V3.geojson')
     map_df = itl3_shapes_df.rename(columns={'ITL321CD': 'itl3'})
@@ -17,6 +17,21 @@ def make_map_itl(itl_level):
     if itl_level != 'itl3':
         map_df = map_df.groupby([itl_level, f'{itl_level}name']).geometry.apply(lambda x: x.union_all()).reset_index()
     map_df = gpd.GeoDataFrame(map_df, geometry='geometry', crs=itl3_shapes_df.crs)
+    if nat:
+        excluded_itl1 = ["TLN", "TLM", "TLL"]
+        remaining_itl1 = itlmapping[~itlmapping['itl1'].isin(excluded_itl1)]['itl1'].unique().tolist()
+        # Merge geometries of the remaining ITL1 regions
+        merged_geom = map_df[map_df[itl_level].isin(remaining_itl1)].geometry.union_all()
+        # Remove individual ITL1 regions and add the merged one
+        map_df = map_df[~map_df[itl_level].isin(remaining_itl1)]
+        # Create merged row with correct format
+        merged_row = gpd.GeoDataFrame({
+            'itl1': ['TLB'],  # Assign 'TLB' as the new ITL1 code
+            'itl1name': ['England'],  # Provide a name for the merged region
+            'geometry': [merged_geom]
+        }, crs=map_df.crs)
+        map_df = pd.concat([map_df, merged_row], ignore_index=True)
+
     map_df['geometry'] = map_df['geometry'].simplify(0.0001, preserve_topology=True)
     map_df = map_df.rename(columns={f'{itl_level}name': 'region'})
     return map_df
@@ -104,7 +119,10 @@ def load_css(filepath):
 def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2, thresholds=[]):
     if df.iloc[0, 0][:2] == 'TL':
         geo_level = assign_itl_level(df.iloc[0, 0]).lower()
-        map_df = make_map_itl(geo_level)
+        nat = False
+        if 'TLB' in list(df.iloc[:, 0]):
+            nat = True
+        map_df = make_map_itl(geo_level, nat)
     elif len(df.iloc[0, 0]) == 9:
         geo_level = assign_ca_level(df.iloc[0, 0]).lower()
         map_df = make_map_authorities(geo_level)
@@ -219,9 +237,8 @@ def main():
         if not df.empty:
             fig, mapname = get_figures(df)
             levels = []
-            level = ''
             st.session_state.levels = levels
-            st.session_state.level = levels
+            st.session_state.level = ''
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -234,9 +251,8 @@ def main():
         if not df.empty:
             fig, mapname = get_figures(df)
             levels = []
-            level = ''
             st.session_state.levels = levels
-            st.session_state.level = levels
+            st.session_state.level = ''
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -249,9 +265,8 @@ def main():
         if not df.empty:
                 fig, mapname = get_figures(df)
                 levels = []
-                level = ''
                 st.session_state.levels = levels
-                st.session_state.level = levels
+                st.session_state.level = ''
                 st.session_state.fig = fig
                 st.session_state.mapname = mapname
                 st.session_state.df = df
@@ -264,9 +279,8 @@ def main():
         if not df.empty:
             fig, mapname = get_figures(df)
             levels = []
-            level = ''
             st.session_state.levels = levels
-            st.session_state.level = levels
+            st.session_state.level = ''
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -279,9 +293,8 @@ def main():
         if not df.empty:
             fig, mapname = get_figures(df)
             levels = []
-            level = ''
             st.session_state.levels = levels
-            st.session_state.level = levels
+            st.session_state.level = ''
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -294,9 +307,8 @@ def main():
         if not df.empty:
             fig, mapname = get_figures(df)
             levels = []
-            level = ''
             st.session_state.levels = levels
-            st.session_state.level = levels
+            st.session_state.level = ''
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -309,7 +321,20 @@ def main():
         if not df.empty:
             fig, mapname = get_figures(df)
             levels = ['ITL1', 'ITL2', 'ITL3']
-            level = levels[0]
+            st.session_state.levels = levels
+            st.session_state.level = levels[0]
+            st.session_state.fig = fig
+            st.session_state.mapname = mapname
+            st.session_state.df = df
+    
+    def button8_click():
+        st.session_state.selected_button = "2025 UK Measures of National Health and Well-being"
+        st.session_state.dataset_info = "This dataset contains measures of health and wellbeing on the national and ITL1 level. These measures are taken from the ONS 'UK Measures of National Well-being Dashboard' where regional data is available."
+        st.session_state.link = "https://www.ons.gov.uk/peoplepopulationandcommunity/wellbeing/articles/ukmeasuresofnationalwellbeing/dashboard"
+        df = pd.read_csv("examples/ITL1_Wellbeing.csv")
+        if not df.empty:
+            fig, mapname = get_figures(df)
+            levels = ['ITL1', 'National']
             st.session_state.levels = levels
             st.session_state.level = levels[0]
             st.session_state.fig = fig
@@ -319,8 +344,7 @@ def main():
     # In your main UI code:
     with st.expander(label="Pre-existing datasets from **The Productivity Institute Data Lab**", expanded=True):
         col1, col2, col3, col4 = st.columns(4)
-        dataset = None
-        
+
         # Set button types
         button1_type = 'primary' if st.session_state.selected_button == "Subregional productivity data - local authoritites 2022" else 'secondary'
         button2_type = 'primary' if st.session_state.selected_button == "2024 ITL1 Scorecard Data" else 'secondary'
@@ -329,6 +353,7 @@ def main():
         button5_type = 'primary' if st.session_state.selected_button == "TPI MCA Digitalisation and Innovation Indicators" else 'secondary'
         button6_type = 'primary' if st.session_state.selected_button == "2025 ITL2 Regional and Global Trade" else 'secondary'
         button7_type = 'primary' if st.session_state.selected_button == "Subnational trade balance data 2022" else 'secondary'
+        button8_type = 'primary' if st.session_state.selected_button == "2025 UK Measures of National Health and Well-being" else 'secondary'
 
         with col1:
             if st.button(label='', key='Example_button1', type=button1_type, on_click=button1_callback):
@@ -350,6 +375,8 @@ def main():
         
         with col4:
             if st.button(label='', key='Example_button4', type=button4_type, on_click=button4_click):
+                st.rerun()
+            if st.button(label='', key='Example_button8', type=button8_type, on_click=button8_click):
                 st.rerun()
 
         # After buttons, if df was loaded, create figures
@@ -390,6 +417,8 @@ def main():
             levels['ITL_Level'] = df[df.columns[0]].apply(assign_itl_level)
             levels['CA_Level'] = df[df.columns[0]].apply(assign_ca_level)
             levels = pd.concat([levels['ITL_Level'], levels['CA_Level']]).drop_duplicates().tolist()
+            if 'TLB' in list(df[df.columns[0]]):
+                levels.append('National')
             if '' in levels:
                 levels.remove('')
             if len(levels) > 1:
@@ -415,11 +444,8 @@ def main():
             if not new_title:
                 st.sidebar.error("Cannot accept empty title.")
                 valid_input = False
-            if not re.match(r"^[A-Za-z0-9 _\-\[\]\{\}\(\),.%*&:£$€]*$", new_title) and valid_input:
+            if not re.match(r"^[A-Za-z0-9 _\-\[\]\{\}\(\),.%*&:£$€\"/]*$", new_title) and valid_input:
                 st.sidebar.error("Invalid characters, please do not include special characters.")
-                valid_input = False
-            if len(new_title) > 70 and valid_input:
-                st.sidebar.error("Exceeded character limit, please use no more than 50 characters.")
                 valid_input = False
             if valid_input:
                 df = df.rename(columns={df.columns[st.session_state.index + 1]: new_title})
@@ -437,7 +463,10 @@ def main():
         if 'ITL' == level[:3]:
             level_to_length = {'ITL1': 3, 'ITL2': 4, 'ITL3': 5}
             st.session_state.df = df
-            df = df.loc[df[df.columns[0]].str.len() == level_to_length[level]].copy()
+            df = df.loc[(df[df.columns[0]].str.len() == level_to_length[level]) & (df[df.columns[0]] != 'TLB')].copy()
+        elif level == 'National':
+            st.session_state.df = df
+            df = df[df[df.columns[0]].isin(['TLB', 'TLL', 'TLM', 'TLN'])]
         else:
             st.session_state.df = df
             if level == 'MCA':
