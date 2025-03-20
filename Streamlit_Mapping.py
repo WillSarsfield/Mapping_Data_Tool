@@ -633,7 +633,7 @@ def main():
                 figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True,
                     config = {
                         'toImageButtonOptions': {
-                            'filename': f'TPI_UK_Colour_Map_{st.session_state.mapname[st.session_state.index].replace(' ','_')}',
+                            'filename': f"TPI_UK_Colour_Map_{st.session_state.mapname[st.session_state.index].replace(' ','_')}",
                             'scale': 2
                         }
                     }
