@@ -6,7 +6,8 @@ import numpy as np
 import plotly.express as px
 import base64
 import re
-import plotly.io as pio
+# Experimental
+# import deepseek
 
 def make_map_itl(itl_level, nat=False):
     itlmapping = pd.read_csv('src/itlmapping.csv')
@@ -179,6 +180,9 @@ def main():
     
     if 'link' not in st.session_state:
         st.session_state.link = None
+    
+    if 'insights' not in st.session_state:
+        st.session_state.insights = ''
 
     # Load CSS from assets
     load_css('assets/styles.css')
@@ -227,6 +231,9 @@ def main():
         """,
         unsafe_allow_html=True
     )
+    
+    def reset_insights():
+        st.session_state.insights = ''
 
     # Define callback functions that return data
     def button1_callback():
@@ -238,7 +245,7 @@ def main():
             fig, mapname = get_figures(df)
             levels = []
             st.session_state.levels = levels
-            st.session_state.level = ''
+            st.session_state.level = 'LA'
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -252,7 +259,7 @@ def main():
             fig, mapname = get_figures(df)
             levels = []
             st.session_state.levels = levels
-            st.session_state.level = ''
+            st.session_state.level = 'ITL1'
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -266,7 +273,7 @@ def main():
                 fig, mapname = get_figures(df)
                 levels = []
                 st.session_state.levels = levels
-                st.session_state.level = ''
+                st.session_state.level = 'MCA'
                 st.session_state.fig = fig
                 st.session_state.mapname = mapname
                 st.session_state.df = df
@@ -280,7 +287,7 @@ def main():
             fig, mapname = get_figures(df)
             levels = []
             st.session_state.levels = levels
-            st.session_state.level = ''
+            st.session_state.level = 'ITL3'
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -294,7 +301,7 @@ def main():
             fig, mapname = get_figures(df)
             levels = []
             st.session_state.levels = levels
-            st.session_state.level = ''
+            st.session_state.level = 'MCA'
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -308,7 +315,7 @@ def main():
             fig, mapname = get_figures(df)
             levels = []
             st.session_state.levels = levels
-            st.session_state.level = ''
+            st.session_state.level = 'ITL2'
             st.session_state.fig = fig
             st.session_state.mapname = mapname
             st.session_state.df = df
@@ -428,6 +435,7 @@ def main():
             st.session_state.index = 0
             # Generate maps for options in menu
             fig, mapname = get_figures(df)
+            reset_insights()
             if not fig:
                 st.error("Region code not recognised.")
         else:
@@ -435,7 +443,7 @@ def main():
 
     # If there are maps to switch between then display the select box
     if mapname:
-        st.session_state.index = mapname.index(st.sidebar.selectbox("Select map", options=mapname, index=index))
+        st.session_state.index = mapname.index(st.sidebar.selectbox("Select map", options=mapname, index=index, on_change=reset_insights))
         # Text box to change current map title
         new_title = st.sidebar.text_input('Change title',value=mapname[st.session_state.index])
         # Validate input: must not be empty, must be the characters in the regex, cannot be longer than 70 characters
@@ -453,13 +461,14 @@ def main():
             if mapname != list(df.columns[1:]):
                 st.session_state.df = df
                 st.session_state.mapname = list(df.columns[1:])
+                reset_insights()
                 st.rerun()
     else:
         # Otherwise show empty select box
         st.sidebar.selectbox("Select map", options=mapname)
     # If there is more than one geography level in the data then allow the user to select
     if len(levels) > 1:
-        level = st.sidebar.selectbox("Select geography level", options=levels, index=levels.index(level))
+        level = st.sidebar.selectbox("Select geography level", options=levels, index=levels.index(level), on_change=reset_insights)
         if 'ITL' == level[:3]:
             level_to_length = {'ITL1': 3, 'ITL2': 4, 'ITL3': 5}
             st.session_state.df = df
@@ -621,8 +630,37 @@ def main():
         with figure_loading.container():
             with st.spinner('Loading map...'):
                 st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp, thresholds)
-                figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True)
-        st.session_state.index = index
+                figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True,
+                    config = {
+                        'toImageButtonOptions': {
+                            'filename': f'TPI_UK_Colour_Map_{st.session_state.mapname[st.session_state.index].replace(' ','_')}',
+                            'scale': 2
+                        }
+                    }
+                )
+            map_index = st.session_state.index
+            st.session_state.index = index
+
+        # Experimental
+        # with st.expander('Insights from AI', expanded=False):
+        #     with st.spinner('Loading insights...'):
+        #         if level[:3].lower() == 'itl':
+        #             mapping = pd.read_csv('src/itlmapping.csv')[[level.lower(), f'{level.lower()}name']].set_index(level.lower()).drop_duplicates()
+        #         elif level == 'National':
+        #             mapping = pd.DataFrame({'itl1': ['TLB', 'TLL', 'TLM', 'TLN'],
+        #                                     'itl1name': ['England', 'Wales', 'Scotland', 'Northern Ireland']}).set_index('itl1')
+        #             level = 'ITL1'
+        #         else:
+        #             mapping = pd.read_csv('src/mcamapping.csv')[[level.lower(), f'{level.lower()}name']].set_index(level.lower()).drop_duplicates()
+        #         insights_df = df[[df.columns[0], st.session_state.mapname[map_index]]].set_index(df.columns[0])
+        #         insights_df = insights_df.join(mapping).set_index(f'{level.lower()}name', drop=True)[st.session_state.mapname[map_index]].to_dict()         
+        #         if len(st.session_state.insights) == 0:
+        #             insight = deepseek.get_insight('map of the UK', st.session_state.mapname[map_index], insights_df)
+        #             st.session_state.insights = insight
+        #         else:
+        #             insight = st.session_state.insights
+        #         st.write(insight)
+            
 
         # filename = f"{mapname[st.session_state.index]}.png"
         # # Save the figure as PNG
