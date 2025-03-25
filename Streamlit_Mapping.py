@@ -498,7 +498,7 @@ def main():
             if level == 'MCA':
                 df = df.loc[df[df.columns[0]].str[:3].isin(['E47', 'E61'])].copy()
             else:
-                df = df.loc[~df[df.columns[0]].str[:3].isin(['E47', 'E61'])].copy()
+                df = df.loc[df[df.columns[0]].str.len() == 9].copy()
     else:
         st.session_state.df = df
         st.session_state.levels = []
