@@ -68,9 +68,12 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
         temp = pd.to_numeric(temp, errors="coerce")
 
         hovertemplate = '%{text}<br>' + column + f': {unit}'+'%{customdata[0]:' + data_format + '}<extra></extra>'
-
-        # Merge GeoDataFrame with data
-        merged_df = map_df.merge(temp, on=geo_level, how='left')
+        if geo_level == 'mca':
+            # Merge GeoDataFrame with data
+            merged_df = map_df.merge(temp, on=geo_level, how='left')
+        else:
+            # Merge GeoDataFrame with data
+            merged_df = map_df.merge(temp, on=geo_level, how='left').dropna()
 
         if len(thresholds) > 0:
             inc_thresholds = thresholds.copy()
@@ -88,6 +91,8 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
         if geo_level == 'mca':
             non_mca = merged_df[merged_df['region_type'] == 'non_mca'].copy()
             mca = merged_df[merged_df['region_type'] == 'mca'].copy()
+            print(mca)
+            print(non_mca)
             
             # Show MCA regions
             fig = go.Figure(go.Choropleth(

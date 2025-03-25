@@ -10,9 +10,9 @@ import re
 # import deepseek
 
 def make_map_itl(itl_level, nat=False):
-    itlmapping = pd.read_csv('src/itlmapping.csv')
-    itl3_shapes_df = gpd.read_file('src/International_Territorial_Level_3_(January_2021)_UK_BUC_V3.geojson')
-    map_df = itl3_shapes_df.rename(columns={'ITL321CD': 'itl3'})
+    itlmapping = pd.read_csv('src/itlmapping-updated.csv')
+    itl3_shapes_df = gpd.read_file('src/International_Territorial_Level_3_Updated.geojson')
+    map_df = itl3_shapes_df.rename(columns={'ITL325CD': 'itl3'})
     # Merge up from ITL3 level to target level
     map_df = map_df.merge(itlmapping, how='left', on='itl3')
     if itl_level != 'itl3':
@@ -348,6 +348,20 @@ def main():
             st.session_state.mapname = mapname
             st.session_state.df = df
 
+    def button9_click():
+        st.session_state.selected_button = "2024 UK local authority and regional greenhouse gas emissions"
+        st.session_state.dataset_info = "This data set contains greenhouse gas emissions measured in carbon dioxide equivalent. These are accredited official statistics from the Department of Energy Security and Net Zero which cover local authorities and has been aggregated to the different International Territorial Levels."
+        st.session_state.link = "https://www.gov.uk/government/statistics/uk-local-authority-and-regional-greenhouse-gas-emissions-statistics-2005-to-2022"
+        df = pd.read_csv("examples/all_emissions_2022.csv")
+        if not df.empty:
+            fig, mapname = get_figures(df)
+            levels = ['ITL3', 'ITL2', 'ITL1', 'LA']
+            st.session_state.levels = levels
+            st.session_state.level = levels[0]
+            st.session_state.fig = fig
+            st.session_state.mapname = mapname
+            st.session_state.df = df
+
     # In your main UI code:
     with st.expander(label="Pre-existing datasets from **The Productivity Institute Data Lab**", expanded=True):
         col1, col2, col3, col4 = st.columns(4)
@@ -361,11 +375,14 @@ def main():
         button6_type = 'primary' if st.session_state.selected_button == "2025 ITL2 Regional and Global Trade" else 'secondary'
         button7_type = 'primary' if st.session_state.selected_button == "Subnational trade balance data 2022" else 'secondary'
         button8_type = 'primary' if st.session_state.selected_button == "2025 UK Measures of National Health and Well-being" else 'secondary'
+        button9_type = 'primary' if st.session_state.selected_button == "2024 UK local authority and regional greenhouse gas emissions" else 'secondary'
 
         with col1:
             if st.button(label='', key='Example_button1', type=button1_type, on_click=button1_callback):
                 st.rerun()
             if st.button(label='', key='Example_button5', type=button5_type, on_click=button5_click):
+                st.rerun()
+            if st.button(label='', key='Example_button9', type=button9_type, on_click=button9_click):
                 st.rerun()
         
         with col2:
