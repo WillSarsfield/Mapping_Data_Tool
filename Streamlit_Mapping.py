@@ -469,9 +469,6 @@ def main():
             if not new_title:
                 st.sidebar.error("Cannot accept empty title.")
                 valid_input = False
-            if not re.match(r"^[A-Za-z0-9 _\-\[\]\{\}\(\),.%*&:£$€\"/]*$", new_title) and valid_input:
-                st.sidebar.error("Invalid characters, please do not include special characters.")
-                valid_input = False
             if valid_input:
                 df = df.rename(columns={df.columns[st.session_state.index + 1]: new_title})
                 
