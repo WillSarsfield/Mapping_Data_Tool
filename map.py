@@ -2,7 +2,6 @@ import plotly.graph_objects as go
 from plotly.colors import sequential
 import pandas as pd
 import geopandas as gpd
-import copy
 
 pd.set_option('future.no_silent_downcasting', True)  # Prevents deprecation warning from Pandas when using fillna
 
@@ -47,7 +46,7 @@ def wrap_title(title, max_length=100):
     
     return wrapped_title
 
-def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1], show_missing_values=False, units='%', dp=2, thresholds=[]):
+def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1], show_missing_values=False, units='%', dp=2, thresholds=[], height=550):
     maps = []
     if units == '%':
         data_format = f".{dp}%"  # Significant figures with '%' appended
@@ -245,7 +244,7 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
         fig.update_layout(
             title=wrap_title(column, max_length=100),
             margin={"r":0,"t":50,"l":0,"b":0},  # Adjust margins
-            height = 550,
+            height = height,
             width = 800
         )
         maps.append(fig)
