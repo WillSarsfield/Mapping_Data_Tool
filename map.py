@@ -90,8 +90,6 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
         if geo_level == 'mca':
             non_mca = merged_df[merged_df['region_type'] == 'non_mca'].copy()
             mca = merged_df[merged_df['region_type'] == 'mca'].copy()
-            print(mca)
-            print(non_mca)
             
             # Show MCA regions
             fig = go.Figure(go.Choropleth(

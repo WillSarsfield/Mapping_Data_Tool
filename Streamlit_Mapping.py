@@ -460,6 +460,8 @@ def main():
 
     # If there are maps to switch between then display the select box
     if mapname:
+        if index >= len(mapname) or index < 0:
+            index = 0
         st.session_state.index = mapname.index(st.sidebar.selectbox("Select map", options=mapname, index=index, on_change=reset_insights))
         # Text box to change current map title
         new_title = st.sidebar.text_input('Change title',value=mapname[st.session_state.index])
