@@ -142,6 +142,12 @@ def main():
 
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
 
+    query_params = {k.lower(): v.lower() for k, v in st.query_params.items()}
+    if 'dvo' in st.session_state:
+        dvo = st.session_state.dvo
+    else:
+        dvo = False
+
     if 'fig' in st.session_state:
         fig = st.session_state.fig
     else:
@@ -236,7 +242,7 @@ def main():
         st.session_state.insights = ''
 
     # Define callback functions that return data
-    def button1_callback():
+    def button1_click():
         st.session_state.selected_button = "Subregional productivity data - local authoritites 2022"
         st.session_state.dataset_info = "This dataset contains information about subregional productivity"
         st.session_state.link = "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/labourproductivity/articles/regionalandsubregionalproductivityintheuk/june2023"
@@ -378,7 +384,7 @@ def main():
         button9_type = 'primary' if st.session_state.selected_button == "2024 UK local authority and regional greenhouse gas emissions" else 'secondary'
 
         with col1:
-            if st.button(label='', key='Example_button1', type=button1_type, on_click=button1_callback):
+            if st.button(label='', key='Example_button1', type=button1_type, on_click=button1_click):
                 st.rerun()
             if st.button(label='', key='Example_button5', type=button5_type, on_click=button5_click):
                 st.rerun()
@@ -507,7 +513,14 @@ def main():
     unit = st.sidebar.selectbox("Select units", options=unit_options)
     dp = st.sidebar.select_slider("Select decimal places", options=list(range(6)), value=0)
     show_missing_values = st.sidebar.toggle(label='Hide the rest of the UK', value=False)
-    map_height = st.sidebar.slider("Adjust map size", min_value=0.25, max_value=float(2), value=float(1), step=0.01) * 550
+    if 'size' in query_params:
+        try:
+            map_size = min(max(float(query_params['size']), 0.25), 2)
+        except:
+            map_size = 1
+    else:
+        map_size = 1
+    map_height = st.sidebar.slider("Adjust map size", min_value=0.25, max_value=float(2), value=float(map_size), step=0.01) * 550
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     # Colour change options
     discrete_colours = st.sidebar.toggle(label='Use discrete colouring')
@@ -657,6 +670,44 @@ def main():
                 )
             map_index = st.session_state.index
             st.session_state.index = index
+    
+    if 'preset' in query_params.keys() and not dvo:
+        if query_params['preset'] == '2022_la_prod':
+            button1_click()
+            st.session_state.dvo = True
+            st.rerun()
+        if query_params['preset'] == '2024_itl1_scorecard':
+            button2_click()
+            st.session_state.dvo = True
+            st.rerun()
+        if query_params['preset'] == '2024_mca_scorecard':
+            button3_click()
+            st.session_state.dvo = True
+            st.rerun()
+        if query_params['preset'] == '2024_itl3_scorecard':
+            button4_click()
+            st.session_state.dvo = True
+            st.rerun()
+        if query_params['preset'] == 'dig_inv_indicators':
+            button5_click()
+            st.session_state.dvo = True
+            st.rerun()
+        if query_params['preset'] == '2025_itl2_trade':
+            button6_click()
+            st.session_state.dvo = True
+            st.rerun()
+        if query_params['preset'] == '2022_subnat_trade_balance':
+            button7_click()
+            st.session_state.dvo = True
+            st.rerun()
+        if query_params['preset'] == '2025_health_wellbeing':
+            button8_click()
+            st.session_state.dvo = True
+            st.rerun()
+        if query_params['preset'] == '2024_la_reg_emissions':
+            button9_click()
+            st.session_state.dvo = True
+            st.rerun()
 
         # Experimental
         # with st.expander('Insights from AI', expanded=False):
