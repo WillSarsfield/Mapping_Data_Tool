@@ -117,7 +117,7 @@ def load_css(filepath):
 
 # Select ITL or authority, get the respective map file, construct the map figures
 @st.cache_data(show_spinner=False)
-def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2, thresholds=[], map_height=550):
+def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2, thresholds=[], map_height=550, index=0):
     if df.iloc[0, 0][:2] == 'TL':
         geo_level = assign_itl_level(df.iloc[0, 0]).lower()
         nat = False
@@ -131,7 +131,7 @@ def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2,
         return [], []
     df = df.rename(columns={df.columns[0]: geo_level})
     mapnames = list(df.set_index(geo_level).columns)
-    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, colorscale, show_missing_values, units, dp, thresholds, map_height)
+    fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, colorscale, show_missing_values, units, dp, thresholds, map_height, index)
     return fig, mapnames
     
 def main():
@@ -659,8 +659,8 @@ def main():
         # Save session state variables and load figure
         with figure_loading.container():
             with st.spinner('Loading map...'):
-                st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp, thresholds, map_height)
-                figure.plotly_chart(st.session_state.fig[st.session_state.index], use_container_width=True,
+                st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp, thresholds, map_height, st.session_state.index)
+                figure.plotly_chart(st.session_state.fig, use_container_width=True,
                     config = {
                         'toImageButtonOptions': {
                             'filename': f"TPI_UK_Colour_Map_{st.session_state.mapname[st.session_state.index].replace(' ','_')}",
