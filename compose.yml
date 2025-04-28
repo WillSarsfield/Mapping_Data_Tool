@@ -1,5 +1,5 @@
 services:
-  tpi-ons-app:
+  tpi-uk-colour-mapping:
     build:
       context: .
       dockerfile: Dockerfile
