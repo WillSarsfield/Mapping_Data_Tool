@@ -1,0 +1,12 @@
+services:
+  tpi-ons-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args: 
+        - GOOGLE_ANALYTICS_ID=${GOOGLE_ANALYTICS_ID:-}
+    volumes:
+      - .:/app
+    ports:
+      - "${STREAMLIT_PORT-8888}:80"
+    container_name: tpi-uk-colour-mapping
