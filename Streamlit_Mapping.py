@@ -135,7 +135,7 @@ def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2,
     return fig, mapnames
     
 def main():
-    st.set_page_config(layout="wide")
+    st.set_page_config(layout="wide", page_title="UK Colour Mapping")
 
     st.sidebar.html("<a href='https://lab.productivity.ac.uk' alt='The Productivity Lab'></a>")
     st.logo("static/logo.png", link="https://lab.productivity.ac.uk/", icon_image=None)
