@@ -408,14 +408,6 @@ def main():
                 st.rerun()
             if st.button(label='', key='Example_button8', type=button8_type, on_click=button8_click):
                 st.rerun()
-
-        # After buttons, if df was loaded, create figures
-        # if dataset is not None:
-        #     df = pd.read_csv(dataset)
-        #     print(df)
-        #     if not df.empty:
-        #         print("testing:", df)
-        #         fig, mapname = get_figures(df)
         
         if st.session_state.selected_button:
             st.markdown(f"### Currently selected: {st.session_state.selected_button}")
@@ -510,8 +502,24 @@ def main():
     # Sidebar updates after upload
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
     unit_options = ['None', '%', '£', '$', '€']
-    unit = st.sidebar.selectbox("Select units", options=unit_options)
-    dp = st.sidebar.select_slider("Select decimal places", options=list(range(6)), value=0)
+    if 'unit' in query_params:
+        if query_params['unit'] in unit_options:
+            map_units = unit_options.index(query_params['unit'])
+        else:
+            map_units = 0
+    else:
+        map_units = 0
+    unit = st.sidebar.selectbox("Select units", options=unit_options, index=map_units)
+
+    dp_options = list(range(6))
+    if 'dp' in query_params:
+        try:
+            map_dp = min(max(float(query_params['dp']), 0), 5)
+        except:
+            map_dp = 0
+    else:
+        map_dp = 0
+    dp = st.sidebar.select_slider("Select decimal places", options=dp_options, value=map_dp)
     show_missing_values = st.sidebar.toggle(label='Hide the rest of the UK', value=False)
     if 'size' in query_params:
         try:
@@ -706,6 +714,17 @@ def main():
             st.rerun()
         if query_params['preset'] == '2024_la_reg_emissions':
             button9_click()
+            st.session_state.dvo = True
+            st.rerun()
+        if query_params['preset'] == 'ln_average_growth':
+            df = pd.read_csv("examples/ITL3_LN_Average_Growth.csv")
+            fig, mapname = get_figures(df)
+            levels = []
+            st.session_state.levels = levels
+            st.session_state.level = 'ITL3'
+            st.session_state.fig = fig
+            st.session_state.mapname = mapname
+            st.session_state.df = df
             st.session_state.dvo = True
             st.rerun()
 
