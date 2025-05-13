@@ -67,12 +67,8 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
     temp = pd.to_numeric(temp, errors="coerce")
 
     hovertemplate = '%{text}<br>' + column + f': {unit}'+'%{customdata[0]:' + data_format + '}<extra></extra>'
-    if geo_level == 'mca':
-        # Merge GeoDataFrame with data
-        merged_df = map_df.merge(temp, on=geo_level, how='left')
-    else:
-        # Merge GeoDataFrame with data
-        merged_df = map_df.merge(temp, on=geo_level, how='left').dropna()
+    merged_df = map_df.merge(temp, on=geo_level, how='left')
+
 
     if len(thresholds) > 0:
         inc_thresholds = thresholds.copy()
@@ -138,7 +134,22 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
                     ))
 
     else:  # If not MCA data
-        fig = go.Figure(go.Choropleth(
+        fig = go.Figure()
+        if not show_missing_values:
+            last_col = merged_df.columns[-1]
+            merged_df.to_csv('test.csv')
+            missing_values_df = merged_df[merged_df[last_col].isna()]
+            print(missing_values_df)
+            fig.add_trace(go.Choropleth(
+                geojson=missing_values_df.__geo_interface__,
+                featureidkey=f"properties.{geo_level}",  # Match with GeoJSON properties
+                locations=missing_values_df[geo_level],  # Geographic identifiers in data
+                z=missing_values_df[metric].fillna(0),  # Fill NA with 0 for consistent coloring
+                colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
+                showscale=False,  # Show the colour scale
+                hoverinfo='skip'
+            ))
+        fig.add_trace(go.Choropleth(
             geojson=merged_df.__geo_interface__,
             featureidkey=f"properties.{geo_level}",  # Match with GeoJSON properties
             locations=merged_df[geo_level],  # Geographic identifiers in data
@@ -154,18 +165,6 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
             hovertemplate=hovertemplate
         ))
         
-        if not show_missing_values:
-            last_col = merged_df.columns[-1]
-            missing_values_df = merged_df[merged_df[last_col].isna()]
-            fig.add_trace(go.Choropleth(
-                geojson=missing_values_df.__geo_interface__,
-                featureidkey=f"properties.{geo_level}",  # Match with GeoJSON properties
-                locations=missing_values_df[geo_level],  # Geographic identifiers in data
-                z=missing_values_df[metric].fillna(0),  # Fill NA with 0 for consistent coloring
-                colorscale=[[0, '#e0e0e0'], [1, '#e0e0e0']],  # Light grey
-                showscale=False,  # Show the colour scale
-                hoverinfo='skip'
-            ))
     
     if len(thresholds) > 0:
         # Legend positioning
