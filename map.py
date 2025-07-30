@@ -47,7 +47,6 @@ def wrap_title(title, max_length=100):
     return wrapped_title
 
 def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1], show_missing_values=False, units='%', dp=2, thresholds=[], height=550, index=0):
-    maps = []
     if units == '%':
         data_format = f".{dp}%"  # Significant figures with '%' appended
         unit = ''
@@ -137,9 +136,7 @@ def make_choropleths(data, map_df, geo_level, colorscale=sequential.Viridis[::-1
         fig = go.Figure()
         if not show_missing_values:
             last_col = merged_df.columns[-1]
-            merged_df.to_csv('test.csv')
             missing_values_df = merged_df[merged_df[last_col].isna()]
-            print(missing_values_df)
             fig.add_trace(go.Choropleth(
                 geojson=missing_values_df.__geo_interface__,
                 featureidkey=f"properties.{geo_level}",  # Match with GeoJSON properties

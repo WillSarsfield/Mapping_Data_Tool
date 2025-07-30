@@ -9,15 +9,13 @@ import re
 # Experimental
 # import deepseek
 
-def make_map_itl(itl_level, nat=False):
-    itlmapping = pd.read_csv('src/itlmapping-updated.csv')
-    itl3_shapes_df = gpd.read_file('src/International_Territorial_Level_3_Updated.geojson')
-    map_df = itl3_shapes_df.rename(columns={'ITL325CD': 'itl3'})
+def make_map_itl(itl_level, itlmapping, _itl3_shapes_df, nat=False):
+    map_df = _itl3_shapes_df.rename(columns={'ITL325CD': 'itl3'})
     # Merge up from ITL3 level to target level
     map_df = map_df.merge(itlmapping, how='left', on='itl3')
     if itl_level != 'itl3':
         map_df = map_df.groupby([itl_level, f'{itl_level}name']).geometry.apply(lambda x: x.union_all()).reset_index()
-    map_df = gpd.GeoDataFrame(map_df, geometry='geometry', crs=itl3_shapes_df.crs)
+    map_df = gpd.GeoDataFrame(map_df, geometry='geometry', crs=_itl3_shapes_df.crs)
     if nat:
         excluded_itl1 = ["TLN", "TLM", "TLL"]
         remaining_itl1 = itlmapping[~itlmapping['itl1'].isin(excluded_itl1)]['itl1'].unique().tolist()
@@ -37,10 +35,8 @@ def make_map_itl(itl_level, nat=False):
     map_df = map_df.rename(columns={f'{itl_level}name': 'region'})
     return map_df
 
-def make_map_authorities(authority_level):
-    mcamapping = pd.read_csv('src/mcamapping.csv')
-    la_shapes_df = gpd.read_file('src/Local_Authority_Districts_December_2024_Boundaries_UK_BUC_-2087974657986281540.geojson')
-    map_df = la_shapes_df.rename(columns={'LAD24CD': 'la'})
+def make_map_authorities(authority_level, mcamapping, _la_shapes_df):
+    map_df = _la_shapes_df.rename(columns={'LAD24CD': 'la'})
     if authority_level != 'la':  # If MCA data is entered
         # Merge all data with MCA mapping
         mapped_df = map_df.merge(mcamapping, how='left', on='la')
@@ -49,7 +45,7 @@ def make_map_authorities(authority_level):
         non_mca_df = mapped_df[mapped_df['mca'].isna()].copy()
         # Process MCA regions
         mca_regions = mca_df.groupby(['mca', 'mcaname']).geometry.apply(lambda x: x.union_all()).reset_index()
-        mca_regions = gpd.GeoDataFrame(mca_regions, geometry='geometry', crs=la_shapes_df.crs)
+        mca_regions = gpd.GeoDataFrame(mca_regions, geometry='geometry', crs=_la_shapes_df.crs)
         mca_regions['region_type'] = 'mca'
         # Process non-MCA regions
         non_mca_geometry = non_mca_df.geometry.union_all()
@@ -58,7 +54,7 @@ def make_map_authorities(authority_level):
             'mcaname': ['Non-MCA Regions'],
             'geometry': [non_mca_geometry],
             'region_type': ['non_mca']
-        }, geometry='geometry', crs=la_shapes_df.crs)
+        }, geometry='geometry', crs=_la_shapes_df.crs)
         # Merge MCA and non-MCA regions
         map_df = pd.concat([mca_regions, non_mca_regions], ignore_index=True)
         map_df = map_df.rename(columns={'mcaname': 'region'})
@@ -66,7 +62,7 @@ def make_map_authorities(authority_level):
         # Merge the mca mapping to the map df so the region names can be displayed on the map
         map_df = map_df.merge(mcamapping[['la', 'laname']], how='left', on='la')
         map_df = map_df.rename(columns={'laname': 'region'})
-    map_df = gpd.GeoDataFrame(map_df, geometry='geometry', crs=la_shapes_df.crs)
+    map_df = gpd.GeoDataFrame(map_df, geometry='geometry', crs=_la_shapes_df.crs)
     map_df['geometry'] = map_df['geometry'].simplify(0.0001, preserve_topology=True)
     return map_df
 
@@ -117,22 +113,31 @@ def load_css(filepath):
 
 # Select ITL or authority, get the respective map file, construct the map figures
 @st.cache_data(show_spinner=False)
-def get_figures(df, colorscale=None, show_missing_values=False, units='%', dp=2, thresholds=[], map_height=550, index=0):
+def get_figures(df, mcamapping, _la_shapes_df, itlmapping, _itl3_shapes_df, colorscale=None, show_missing_values=False, units='%', dp=2, thresholds=[], map_height=550, index=0, ):
     if df.iloc[0, 0][:2] == 'TL':
         geo_level = assign_itl_level(df.iloc[0, 0]).lower()
         nat = False
         if 'TLB' in list(df.iloc[:, 0]):
             nat = True
-        map_df = make_map_itl(geo_level, nat)
+        map_df = make_map_itl(geo_level, itlmapping, _itl3_shapes_df, nat)
     elif len(df.iloc[0, 0]) == 9:
         geo_level = assign_ca_level(df.iloc[0, 0]).lower()
-        map_df = make_map_authorities(geo_level)
+        map_df = make_map_authorities(geo_level, mcamapping, _la_shapes_df)
     else:
         return [], []
     df = df.rename(columns={df.columns[0]: geo_level})
     mapnames = list(df.set_index(geo_level).columns)
     fig = map.make_choropleths(df.set_index(geo_level), map_df, geo_level, colorscale, show_missing_values, units, dp, thresholds, map_height, index)
     return fig, mapnames
+
+# Preload files
+@st.cache_data(show_spinner=False)
+def load_files():
+    mcamapping = pd.read_csv('src/mcamapping.csv')
+    la_shapes_df = gpd.read_file('src/Local_Authority_Districts_December_2024_Boundaries_UK_BUC_-2087974657986281540.geojson')
+    itlmapping = pd.read_csv('src/itlmapping-updated.csv')
+    itl3_shapes_df = gpd.read_file('src/International_Territorial_Level_3_Updated.geojson')
+    return mcamapping, la_shapes_df, itlmapping, itl3_shapes_df
     
 def main():
     st.set_page_config(layout="wide", page_title="UK Colour Mapping")
@@ -141,6 +146,7 @@ def main():
     st.logo("static/logo.png", link="https://lab.productivity.ac.uk/", icon_image=None)
 
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
+    mcamapping, la_shapes_df, itlmapping, itl3_shapes_df = load_files()
 
     query_params = {k.lower(): v.lower() for k, v in st.query_params.items()}
     if 'dvo' in st.session_state:
@@ -248,7 +254,8 @@ def main():
         st.session_state.link = "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/labourproductivity/articles/regionalandsubregionalproductivityintheuk/june2023"
         df = pd.read_csv("examples/LA_example.csv")
         if not df.empty:
-            fig, mapname = get_figures(df)
+            fig = True
+            mapname = df.columns[1:].tolist()
             levels = []
             st.session_state.levels = levels
             st.session_state.level = 'LA'
@@ -262,7 +269,8 @@ def main():
         st.session_state.link = "https://lab.productivity.ac.uk/data/productivity-datasets/ITl1-scorecards/"
         df = pd.read_csv("examples/ITL1_Scorecard_input_data_percentage.csv")
         if not df.empty:
-            fig, mapname = get_figures(df)
+            fig = True
+            mapname = df.columns[1:].tolist()
             levels = []
             st.session_state.levels = levels
             st.session_state.level = 'ITL1'
@@ -276,7 +284,8 @@ def main():
         st.session_state.link = "https://lab.productivity.ac.uk/data/productivity-datasets/MCA-scorecards/"
         df = pd.read_csv("examples/MCA-ITL3_scorecards_data_file_modified.csv")
         if not df.empty:
-                fig, mapname = get_figures(df)
+                fig = True
+                mapname = df.columns[1:].tolist()
                 levels = []
                 st.session_state.levels = levels
                 st.session_state.level = 'MCA'
@@ -290,7 +299,8 @@ def main():
         st.session_state.link = "https://lab.productivity.ac.uk/data/productivity-datasets/ITL3-scorecards/"
         df = pd.read_csv("examples/ITL3_scorecards_data_file_modified.csv")
         if not df.empty:
-            fig, mapname = get_figures(df)
+            fig = True
+            mapname = df.columns[1:].tolist()
             levels = []
             st.session_state.levels = levels
             st.session_state.level = 'ITL3'
@@ -304,7 +314,8 @@ def main():
         st.session_state.link = "https://lab.productivity.ac.uk/data/productivity-datasets/MCA-digitalisation-innovation-indicators/"
         df = pd.read_csv("examples/MCA_digitalisation_innovation.csv")
         if not df.empty:
-            fig, mapname = get_figures(df)
+            fig = True
+            mapname = df.columns[1:].tolist()
             levels = []
             st.session_state.levels = levels
             st.session_state.level = 'MCA'
@@ -318,7 +329,8 @@ def main():
         st.session_state.link = "https://www.google.com"
         df = pd.read_csv("examples/ITL2_example.csv")
         if not df.empty:
-            fig, mapname = get_figures(df)
+            fig = True
+            mapname = df.columns[1:].tolist()
             levels = []
             st.session_state.levels = levels
             st.session_state.level = 'ITL2'
@@ -332,7 +344,8 @@ def main():
         st.session_state.link = "https://www.ons.gov.uk/businessindustryandtrade/internationaltrade/bulletins/internationaltradeinuknationsregionsandcities/2022"
         df = pd.read_csv("examples/ITL_tradebalance.csv")
         if not df.empty:
-            fig, mapname = get_figures(df)
+            fig = True
+            mapname = df.columns[1:].tolist()
             levels = ['ITL1', 'ITL2', 'ITL3']
             st.session_state.levels = levels
             st.session_state.level = levels[0]
@@ -346,7 +359,8 @@ def main():
         st.session_state.link = "https://www.ons.gov.uk/peoplepopulationandcommunity/wellbeing/articles/ukmeasuresofnationalwellbeing/dashboard"
         df = pd.read_csv("examples/ITL1_Wellbeing.csv")
         if not df.empty:
-            fig, mapname = get_figures(df)
+            fig = True
+            mapname = df.columns[1:].tolist()
             levels = ['ITL1', 'National']
             st.session_state.levels = levels
             st.session_state.level = levels[0]
@@ -360,7 +374,8 @@ def main():
         st.session_state.link = "https://www.gov.uk/government/statistics/uk-local-authority-and-regional-greenhouse-gas-emissions-statistics-2005-to-2022"
         df = pd.read_csv("examples/all_emissions_2022.csv")
         if not df.empty:
-            fig, mapname = get_figures(df)
+            fig = True
+            mapname = df.columns[1:].tolist()
             levels = ['ITL3', 'ITL2', 'ITL1', 'LA']
             st.session_state.levels = levels
             st.session_state.level = levels[0]
@@ -448,14 +463,19 @@ def main():
                 level = levels[0]
                 st.session_state.level = levels[0]
             st.session_state.index = 0
-            # Generate maps for options in menu
-            fig, mapname = get_figures(df)
-            reset_insights()
-            if not fig:
+            
+            # reset_insights()
+            if df.iloc[0, 0][:2] == 'TL' or len(df.iloc[0, 0]) == 9:
+                fig = True
+                mapname = df.columns[1:].tolist()
+            else:
+                fig = False
+                mapname = []
                 st.error("Region code not recognised.")
+                
         else:
             st.error("No file uploaded yet.")
-
+    rerun = False
     # If there are maps to switch between then display the select box
     if mapname:
         if index >= len(mapname) or index < 0:
@@ -475,8 +495,8 @@ def main():
             if mapname != list(df.columns[1:]):
                 st.session_state.df = df
                 st.session_state.mapname = list(df.columns[1:])
-                reset_insights()
-                st.rerun()
+                mapname = list(df.columns[1:])
+                rerun = True
     else:
         # Otherwise show empty select box
         st.sidebar.selectbox("Select map", options=mapname)
@@ -660,14 +680,15 @@ def main():
 
             custom_colour_scale = generate_colour_scale(colours)
     st.sidebar.markdown("---")  # This creates a basic horizontal line (divider)
-    
+    if rerun:
+        st.rerun()
 
     # Labeling options
     if fig:
         # Save session state variables and load figure
         with figure_loading.container():
             with st.spinner('Loading map...'):
-                st.session_state.fig, st.session_state.mapname = get_figures(df, custom_colour_scale, show_missing_values, unit, dp, thresholds, map_height, st.session_state.index)
+                st.session_state.fig, st.session_state.mapname = get_figures(df, mcamapping, la_shapes_df, itlmapping, itl3_shapes_df, custom_colour_scale, show_missing_values, unit, dp, thresholds, map_height, st.session_state.index)
                 figure.plotly_chart(st.session_state.fig, use_container_width=True,
                     config = {
                         'toImageButtonOptions': {
@@ -718,7 +739,8 @@ def main():
             st.rerun()
         if query_params['preset'] == 'ln_average_growth':
             df = pd.read_csv("examples/ITL3_LN_Average_Growth.csv")
-            fig, mapname = get_figures(df)
+            fig = True
+            mapname = df.columns[1:].tolist()
             levels = []
             st.session_state.levels = levels
             st.session_state.level = 'ITL3'
