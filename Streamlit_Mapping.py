@@ -264,10 +264,10 @@ def main():
             st.session_state.df = df
 
     def button2_click():
-        st.session_state.selected_button = "2024 ITL1 Scorecard Data"
+        st.session_state.selected_button = "2025 ITL1 Scorecard Data"
         st.session_state.dataset_info = "This dataset includes scorecards for all 12 ITL1 regions in the United Kingdom. These scorecards indicate for each ITL1 region how well the region is performing as compared to the median of all ITL1 regions in the UK, for a broad set of indicators. These indicators are considered to be drivers of productivity and are classified according to five broad categories:  Business performance & characteristics; Skills & training; Policy & institutions; Health & wellbeing; Investment, infrastructure & connectivity."
         st.session_state.link = "https://lab.productivity.ac.uk/data/productivity-datasets/ITl1-scorecards/"
-        df = pd.read_csv("examples/ITL1_Scorecard_input_data_percentage.csv")
+        df = pd.read_csv("examples/ITL1_Scorecard_map_tool_data.csv")
         if not df.empty:
             fig = True
             mapname = df.columns[1:].tolist()
@@ -388,8 +388,8 @@ def main():
         col1, col2, col3, col4 = st.columns(4)
 
         # Set button types
-        button1_type = 'primary' if st.session_state.selected_button == "Subregional productivity data - local authoritites 2022" else 'secondary'
-        button2_type = 'primary' if st.session_state.selected_button == "2024 ITL1 Scorecard Data" else 'secondary'
+        button1_type = 'primary' if st.session_state.selected_button == "Subregional productivity data - local authoritites 2023" else 'secondary'
+        button2_type = 'primary' if st.session_state.selected_button == "2025 ITL1 Scorecard Data" else 'secondary'
         button3_type = 'primary' if st.session_state.selected_button == "2024 MCA Scorecard data" else 'secondary'
         button4_type = 'primary' if st.session_state.selected_button == "2024 ITL3 Scorecard data" else 'secondary'
         button5_type = 'primary' if st.session_state.selected_button == "TPI MCA Digitalisation and Innovation Indicators" else 'secondary'
